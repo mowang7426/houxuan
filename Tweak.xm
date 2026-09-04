@@ -5,18 +5,34 @@
 
 - (void)sendEvent:(UIEvent *)event {
     %orig;
-    @try {
+
+    @autoreleasepool {
+        if (event.type != UIEventTypeTouches) return;
         KBGlowManager *mgr = [KBGlowManager sharedManager];
         if (![mgr isCurrentKeyboardEnabled]) return;
-        if (event.type != UIEventTypeTouches) return;
-        for (UITouch *touch in [event allTouches]) {
-            if (touch.phase != UITouchPhaseBegan) continue;
+
+        for (UITouch *touch in event.allTouches) {
             UIView *view = touch.view;
             if (!view) continue;
+
             CGPoint point = [touch locationInView:view];
-            [mgr triggerGlowInView:view atPoint:point];
+            switch (touch.phase) {
+                case UITouchPhaseBegan:
+                    if ([mgr isKeyView:view]) {
+                        [mgr beginGlowForTouch:touch inView:view atPoint:point];
+                    }
+                    break;
+                case UITouchPhaseMoved:
+                    [mgr moveGlowForTouch:touch inView:view atPoint:point];
+                    break;
+                case UITouchPhaseEnded:
+                case UITouchPhaseCancelled:
+                    [mgr endGlowForTouch:touch];
+                    break;
+                default:
+                    break;
+            }
         }
-    } @catch (NSException *e) {
     }
 }
 

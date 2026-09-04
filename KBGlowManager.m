@@ -15,6 +15,10 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
     });
 }
 
+@interface KBGlowManager ()
+@property (nonatomic, strong) NSMapTable<UITouch *, KBGlowView *> *activeGlows;
+@end
+
 @implementation KBGlowManager
 
 + (instancetype)sharedManager {
@@ -30,6 +34,7 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 - (instancetype)init {
     self = [super init];
     if (self) {
+        self.activeGlows = [NSMapTable weakToStrongObjectsMapTable];
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(reloadSettings)
                                                      name:NSUserDefaultsDidChangeNotification
@@ -158,19 +163,15 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 
 - (void)triggerGlowInView:(UIView *)view atPoint:(CGPoint)point {
     if (!self.enabled || !view || ![self isCurrentKeyboardEnabled]) return;
+    if (![self isKeyView:view]) return;
 
     UIView *keyView = [self findKeyViewFromView:view];
-    if (!keyView) keyView = view;
     UIView *container = keyView.superview ?: keyView;
     if (!container) return;
 
-    CGPoint convertedPoint;
-    if (self.followFinger) {
-        convertedPoint = [view convertPoint:point toView:container];
-    } else {
-        convertedPoint = [keyView convertPoint:CGPointMake(CGRectGetMidX(keyView.bounds), CGRectGetMidY(keyView.bounds))
-                                       toView:container];
-    }
+    CGPoint convertedPoint = self.followFinger
+        ? [view convertPoint:point toView:container]
+        : [keyView convertPoint:CGPointMake(CGRectGetMidX(keyView.bounds), CGRectGetMidY(keyView.bounds)) toView:container];
 
     KBGlowView *glowView = [[KBGlowView alloc] initWithFrame:container.bounds];
     glowView.glowColor = self.glowColor ?: [UIColor colorWithRed:0 green:1 blue:0 alpha:1];
@@ -183,12 +184,55 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
     [glowView startAnimationAtPoint:convertedPoint];
 }
 
+- (void)beginGlowForTouch:(UITouch *)touch inView:(UIView *)view atPoint:(CGPoint)point {
+    if (!touch || !view || !self.enabled || ![self isCurrentKeyboardEnabled]) return;
+    if (![self isKeyView:view]) return;
+
+    // 一个手指只保留一个光效，避免同一触摸被多个 UIWindow/层级重复创建。
+    [self endGlowForTouch:touch];
+
+    UIView *keyView = [self findKeyViewFromView:view];
+    UIView *container = keyView.superview ?: keyView;
+    if (!container) return;
+
+    CGPoint p = self.followFinger
+        ? [view convertPoint:point toView:container]
+        : [keyView convertPoint:CGPointMake(CGRectGetMidX(keyView.bounds), CGRectGetMidY(keyView.bounds)) toView:container];
+
+    KBGlowView *glow = [[KBGlowView alloc] initWithFrame:container.bounds];
+    glow.glowColor = self.glowColor ?: [UIColor colorWithRed:0 green:1 blue:0 alpha:1];
+    glow.glowSize = self.glowSize;
+    glow.glowDuration = self.glowDuration;
+    glow.glowOpacity = self.glowOpacity;
+    glow.animationType = self.animationType;
+    glow.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    glow.userInteractionEnabled = NO;
+    [container addSubview:glow];
+    [self.activeGlows setObject:glow forKey:touch];
+    [glow startAnimationAtPoint:p];
+}
+
+- (void)moveGlowForTouch:(UITouch *)touch inView:(UIView *)view atPoint:(CGPoint)point {
+    KBGlowView *glow = [self.activeGlows objectForKey:touch];
+    if (!glow || !self.followFinger || !view) return;
+    UIView *container = glow.superview;
+    if (!container) return;
+    CGPoint p = [view convertPoint:point toView:container];
+    [glow updateAnimationPoint:p];
+}
+
+- (void)endGlowForTouch:(UITouch *)touch {
+    if (!touch) return;
+    KBGlowView *glow = [self.activeGlows objectForKey:touch];
+    if (glow) {
+        [glow finishAnimation];
+        [self.activeGlows removeObjectForKey:touch];
+    }
+}
+
 - (void)notifySettingsChanged {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
-                                          kKBGlowDarwinNotification,
-                                          NULL,
-                                          NULL,
-                                          true);
+                                          kKBGlowDarwinNotification, NULL, NULL, true);
 }
 
 @end

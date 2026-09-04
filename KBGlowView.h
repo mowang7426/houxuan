@@ -17,5 +17,7 @@ typedef NS_ENUM(NSInteger, KBGlowAnimationType) {
 
 - (void)startAnimationAtPoint:(CGPoint)point;
 - (void)stopAnimation;
+- (void)updateAnimationPoint:(CGPoint)point;
+- (void)finishAnimation;
 
 @end
