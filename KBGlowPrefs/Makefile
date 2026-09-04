@@ -9,5 +9,6 @@ KBGlowPrefs_INSTALL_PATH = /Library/PreferenceBundles
 KBGlowPrefs_FRAMEWORKS = UIKit
 KBGlowPrefs_CFLAGS = -fobjc-arc
 KBGlowPrefs_LDFLAGS = -undefined dynamic_lookup
+KBGlowPrefs_INFO_PLIST = Info.plist
 
 include $(THEOS_MAKE_PATH)/bundle.mk
