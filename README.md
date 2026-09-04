@@ -144,4 +144,4 @@ KBGlow/
 5. 设置通过 `NSUserDefaults` 的 App Group 共享，偏好面板和 Tweak 端读写同一 suite
 
 ## 版本
-v1.0.0
+v1.0.2
