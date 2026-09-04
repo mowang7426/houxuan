@@ -27,11 +27,35 @@ iOS 越狱 Tweak，给微信输入法、百度输入法、搜狗输入法添加�
 
 ## 编译方法
 
-### 环境要求
+### 方法一：GitHub Actions 在线编译（推荐，无需 Mac）
+
+本项目已内置 `.github/workflows/build.yml`，推送到 GitHub 后自动编译：
+
+1. 在 GitHub 创建一个新仓库（Public 或 Private 均可）
+2. 将本项目所有文件推送到仓库：
+   ```bash
+   cd KBGlow
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git branch -M main
+   git remote add origin https://github.com/你的用户名/仓库名.git
+   git push -u origin main
+   ```
+3. 打开 GitHub 仓库页面，点击 **Actions** 标签
+4. 等待 **Build KBGlow** 工作流运行完成（约 3-5 分钟）
+5. 点击运行记录，在页面底部 **Artifacts** 区域下载 `KBGlow-deb`
+6. 解压下载的 zip，里面就是编译好的 deb 文件
+
+> 如果 Actions 运行失败，点开日志看报错。常见原因是 SDK 或工具链下载地址失效，更新 `.github/workflows/build.yml` 里的下载链接即可。
+
+### 方法二：本地 Mac 编译
+
+#### 环境要求
 - macOS（需要 Xcode / Command Line Tools）
 - 已安装 Theos
 
-### 安装 Theos（如果还没装）
+#### 安装 Theos（如果还没装）
 ```bash
 # 安装依赖
 brew install ldid xz
@@ -44,7 +68,7 @@ export THEOS=~/theos
 # 将 iPhoneOS17.0.sdk 放到 ~/theos/sdks/
 ```
 
-### 编译
+#### 编译
 ```bash
 cd KBGlow
 make clean package
