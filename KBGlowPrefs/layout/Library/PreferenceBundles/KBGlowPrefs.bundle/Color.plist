@@ -12,41 +12,87 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>预设颜色</string>
+			<string>预设颜色（只开启一个）</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSLinkCell</string>
+			<string>PSSwitchCell</string>
 			<key>label</key>
-			<string>选择颜色</string>
+			<string>绿色</string>
 			<key>key</key>
-			<string>glowColorName</string>
+			<string>colorGreen</string>
 			<key>default</key>
-			<string>green</string>
-			<key>detail</key>
-			<string>PSListItemsController</string>
-			<key>values</key>
-			<array>
-				<string>green</string>
-				<string>blue</string>
-				<string>red</string>
-				<string>purple</string>
-				<string>orange</string>
-				<string>cyan</string>
-				<string>pink</string>
-				<string>white</string>
-			</array>
-			<key>titles</key>
-			<array>
-				<string>绿色</string>
-				<string>蓝色</string>
-				<string>红色</string>
-				<string>紫色</string>
-				<string>橙色</string>
-				<string>青色</string>
-				<string>粉色</string>
-				<string>白色</string>
-			</array>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>label</key>
+			<string>蓝色</string>
+			<key>key</key>
+			<string>colorBlue</string>
+			<key>default</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>label</key>
+			<string>红色</string>
+			<key>key</key>
+			<string>colorRed</string>
+			<key>default</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>label</key>
+			<string>紫色</string>
+			<key>key</key>
+			<string>colorPurple</string>
+			<key>default</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>label</key>
+			<string>橙色</string>
+			<key>key</key>
+			<string>colorOrange</string>
+			<key>default</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>label</key>
+			<string>青色</string>
+			<key>key</key>
+			<string>colorCyan</string>
+			<key>default</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>label</key>
+			<string>粉色</string>
+			<key>key</key>
+			<string>colorPink</string>
+			<key>default</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>label</key>
+			<string>白色</string>
+			<key>key</key>
+			<string>colorWhite</string>
+			<key>default</key>
+			<false/>
 		</dict>
 	</array>
 </dict>
