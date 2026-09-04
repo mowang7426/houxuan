@@ -32,9 +32,10 @@ static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
 
 - (void)reloadSettings {
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kKBGlowDomain];
-    self.enabled = [defaults boolForKey:@"enabled"] ?: YES;
 
-    // 动画类型 - 从独立开关读取
+    self.enabled = [defaults objectForKey:@"enabled"] ? [defaults boolForKey:@"enabled"] : YES;
+
+    // 动画：设置页始终保证只有一个模式有效。
     if ([defaults boolForKey:@"animParticle"]) {
         self.animationType = KBGlowAnimationTypeParticle;
     } else if ([defaults boolForKey:@"animGlow"]) {
@@ -43,17 +44,22 @@ static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
         self.animationType = KBGlowAnimationTypeRipple;
     }
 
-    self.glowSize = [defaults doubleForKey:@"glowSize"] ?: 60.0;
-    self.glowDuration = [defaults doubleForKey:@"glowDuration"] ?: 0.6;
-    self.glowOpacity = [defaults doubleForKey:@"glowOpacity"] ?: 0.8;
-    self.followFinger = [defaults boolForKey:@"followFinger"] ?: YES;
-    self.wechatEnabled = [defaults boolForKey:@"wechatEnabled"] ?: YES;
-    self.baiduEnabled = [defaults boolForKey:@"baiduEnabled"] ?: YES;
-    self.sogouEnabled = [defaults boolForKey:@"sogouEnabled"] ?: YES;
+    self.glowSize = [defaults objectForKey:@"glowSize"] ? [defaults doubleForKey:@"glowSize"] : 60.0;
+    self.glowDuration = [defaults objectForKey:@"glowDuration"] ? [defaults doubleForKey:@"glowDuration"] : 0.6;
+    self.glowOpacity = [defaults objectForKey:@"glowOpacity"] ? [defaults doubleForKey:@"glowOpacity"] : 0.8;
+    self.followFinger = [defaults objectForKey:@"followFinger"] ? [defaults boolForKey:@"followFinger"] : YES;
+    self.wechatEnabled = [defaults objectForKey:@"wechatEnabled"] ? [defaults boolForKey:@"wechatEnabled"] : YES;
+    self.baiduEnabled = [defaults objectForKey:@"baiduEnabled"] ? [defaults boolForKey:@"baiduEnabled"] : YES;
+    self.sogouEnabled = [defaults objectForKey:@"sogouEnabled"] ? [defaults boolForKey:@"sogouEnabled"] : YES;
 
-    // 颜色 - 从独立开关读取
-    if ([defaults boolForKey:@"colorWhite"]) {
-        self.glowColor = [UIColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:1.0];
+    NSArray *custom = [defaults objectForKey:@"customColor"];
+    if ([custom isKindOfClass:[NSArray class]] && custom.count >= 3) {
+        self.glowColor = [UIColor colorWithRed:[custom[0] doubleValue]
+                                         green:[custom[1] doubleValue]
+                                          blue:[custom[2] doubleValue]
+                                         alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
+    } else if ([defaults boolForKey:@"colorWhite"]) {
+        self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
     } else if ([defaults boolForKey:@"colorPink"]) {
         self.glowColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0];
     } else if ([defaults boolForKey:@"colorCyan"]) {
@@ -70,7 +76,6 @@ static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
         self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
     }
 }
-
 - (BOOL)isCurrentKeyboardEnabled {
     if (!self.enabled) return NO;
     NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
