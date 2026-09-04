@@ -30,7 +30,6 @@
         [self stopAnimation];
     }
     self.isAnimating = YES;
-    self.center = point;
 
     switch (self.animationType) {
         case KBGlowAnimationTypeRipple:
@@ -131,7 +130,7 @@
     self.emitterLayer.emitterSize = CGSizeMake(self.glowSize * 0.3, self.glowSize * 0.3);
     self.emitterLayer.emitterShape = kCAEmitterLayerCircle;
     self.emitterLayer.renderMode = kCAEmitterLayerAdditive;
-    self.emitterLayer.birthRate = 0;
+    self.emitterLayer.birthRate = 1;
 
     CAEmitterCell *cell = [CAEmitterCell emitterCell];
     cell.birthRate = 80;

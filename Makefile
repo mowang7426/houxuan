@@ -22,6 +22,7 @@ include $(THEOS_MAKE_PATH)/bundle.mk
 after-stage::
 	@mkdir -p $(THEOS_STAGING_DIR)/Library/PreferenceBundles/KBGlowPrefs.bundle
 	cp KBGlowPrefs/layout/Library/PreferenceBundles/KBGlowPrefs.bundle/icon.png $(THEOS_STAGING_DIR)/Library/PreferenceBundles/KBGlowPrefs.bundle/icon.png
+	cp KBGlowPrefs/layout/Library/PreferenceBundles/KBGlowPrefs.bundle/icon@2x.png $(THEOS_STAGING_DIR)/Library/PreferenceBundles/KBGlowPrefs.bundle/icon@2x.png
 	mkdir -p $(THEOS_STAGING_DIR)/Library/PreferenceLoader/Preferences
 	cp KBGlowPrefs/PreferenceLoader.plist $(THEOS_STAGING_DIR)/Library/PreferenceLoader/Preferences/KBGlowPrefs.plist
 

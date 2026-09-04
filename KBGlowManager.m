@@ -2,6 +2,18 @@
 #import <objc/runtime.h>
 
 static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
+static CFStringRef const kKBGlowDarwinNotification = CFSTR("com.mowang.kbglow.settingsChanged");
+
+static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
+                                       void *observer,
+                                       CFStringRef name,
+                                       const void *object,
+                                       CFDictionaryRef userInfo) {
+    KBGlowManager *mgr = (__bridge KBGlowManager *)observer;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [mgr reloadSettings];
+    });
+}
 
 @implementation KBGlowManager
 
@@ -22,12 +34,22 @@ static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
                                                  selector:@selector(reloadSettings)
                                                      name:NSUserDefaultsDidChangeNotification
                                                    object:nil];
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (__bridge const void *)(self),
+                                         KBGlowDarwinSettingsChanged,
+                                         kKBGlowDarwinNotification,
+                                         NULL,
+                                         CFNotificationSuspensionBehaviorDeliverImmediately);
     }
     return self;
 }
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                        (__bridge const void *)(self),
+                                        kKBGlowDarwinNotification,
+                                        NULL);
 }
 
 - (void)reloadSettings {
@@ -96,21 +118,15 @@ static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
 - (BOOL)isKeyView:(UIView *)view {
     if (!view) return NO;
     UIView *current = view;
-    for (NSInteger i = 0; i < 4 && current; i++) {
-        NSString *className = NSStringFromClass([current class]);
-        NSString *lower = [className lowercaseString];
-        if ([lower containsString:@"textfield"] ||
-            [lower containsString:@"textview"] ||
-            [lower containsString:@"scrollview"] ||
-            [lower containsString:@"tableview"] ||
-            [lower containsString:@"collectionview"]) {
-            return NO;
-        }
+    for (NSInteger i = 0; i < 10 && current; i++) {
+        NSString *lower = [NSStringFromClass(current.class) lowercaseString];
         if ([lower containsString:@"key"] ||
             [lower containsString:@"button"] ||
-            [lower containsString:@"keyview"] ||
-            [lower containsString:@"keyplane"] ||
-            [lower containsString:@"keyboardkey"]) {
+            [lower containsString:@"keyboardkey"] ||
+            [lower containsString:@"keyplane"]) {
+            return YES;
+        }
+        if ([current isKindOfClass:[UIControl class]]) {
             return YES;
         }
         current = current.superview;
@@ -120,31 +136,41 @@ static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
 
 - (UIView *)findKeyViewFromView:(UIView *)view {
     UIView *current = view;
-    for (NSInteger i = 0; i < 4 && current; i++) {
-        NSString *className = NSStringFromClass([current class]);
-        NSString *lower = [className lowercaseString];
-        if ([lower containsString:@"key"] ||
-            [lower containsString:@"button"] ||
+    UIView *control = nil;
+    for (NSInteger i = 0; i < 10 && current; i++) {
+        NSString *lower = [NSStringFromClass(current.class) lowercaseString];
+        if ([lower containsString:@"keyboardkey"] ||
             [lower containsString:@"keyview"] ||
-            [lower containsString:@"keyplane"]) {
+            [lower containsString:@"keyplane"] ||
+            [lower containsString:@"button"] ||
+            [lower containsString:@"key"]) {
             return current;
+        }
+        if (!control && [current isKindOfClass:[UIControl class]]) {
+            control = current;
         }
         current = current.superview;
     }
-    return view;
+    return control ?: view;
 }
 
 - (void)triggerGlowInView:(UIView *)view atPoint:(CGPoint)point {
-    if (!self.enabled || !view) return;
-    if (![self isCurrentKeyboardEnabled]) return;
+    if (!self.enabled || !view || ![self isCurrentKeyboardEnabled]) return;
+
     UIView *keyView = [self findKeyViewFromView:view];
     UIView *container = keyView.superview ?: keyView;
-    CGPoint convertedPoint = [keyView convertPoint:point toView:container];
-    if (!self.followFinger) {
-        convertedPoint = CGPointMake(CGRectGetMidX(keyView.frame), CGRectGetMidY(keyView.frame));
+    if (!container) return;
+
+    CGPoint convertedPoint;
+    if (self.followFinger) {
+        convertedPoint = [view convertPoint:point toView:container];
+    } else {
+        convertedPoint = [keyView convertPoint:CGPointMake(CGRectGetMidX(keyView.bounds), CGRectGetMidY(keyView.bounds))
+                                       toView:container];
     }
+
     KBGlowView *glowView = [[KBGlowView alloc] initWithFrame:container.bounds];
-    glowView.glowColor = self.glowColor;
+    glowView.glowColor = self.glowColor ?: [UIColor colorWithRed:0 green:1 blue:0 alpha:1];
     glowView.glowSize = self.glowSize;
     glowView.glowDuration = self.glowDuration;
     glowView.glowOpacity = self.glowOpacity;
@@ -152,6 +178,14 @@ static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
     glowView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [container addSubview:glowView];
     [glowView startAnimationAtPoint:convertedPoint];
+}
+
+- (void)notifySettingsChanged {
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                          kKBGlowDarwinNotification,
+                                          NULL,
+                                          NULL,
+                                          true);
 }
 
 @end

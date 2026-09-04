@@ -18,6 +18,7 @@
 
 + (instancetype)sharedManager;
 - (void)reloadSettings;
+- (void)notifySettingsChanged;
 
 // 在指定 view 的指定位置触发光效
 - (void)triggerGlowInView:(UIView *)view atPoint:(CGPoint)point;
