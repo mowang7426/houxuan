@@ -1,0 +1,9 @@
+Package: com.mowang.kbglow
+Name: KBGlow
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: 第三方键盘按键发光效果插件
+Maintainer: MoWang
+Author: MoWang
+Section: Tweaks
+Depends: mobilesubstrate, preferenceloader
