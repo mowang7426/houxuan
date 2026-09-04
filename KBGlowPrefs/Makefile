@@ -15,3 +15,6 @@ include $(THEOS_MAKE_PATH)/bundle.mk
 
 after-stage::
 	cp Info.plist $(THEOS_STAGING_DIR)/Library/PreferenceBundles/KBGlowPrefs.bundle/Info.plist
+	cp layout/Library/PreferenceBundles/KBGlowPrefs.bundle/Root.plist $(THEOS_STAGING_DIR)/Library/PreferenceBundles/KBGlowPrefs.bundle/Root.plist
+	cp layout/Library/PreferenceBundles/KBGlowPrefs.bundle/Color.plist $(THEOS_STAGING_DIR)/Library/PreferenceBundles/KBGlowPrefs.bundle/Color.plist
+	cp layout/Library/PreferenceBundles/KBGlowPrefs.bundle/icon.png $(THEOS_STAGING_DIR)/Library/PreferenceBundles/KBGlowPrefs.bundle/icon.png
