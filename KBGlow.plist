@@ -9,6 +9,8 @@
       "com.baidu.input-method.keyboard",
       "com.baidu.inputmethod",
       "com.baidu.inputmethod.keyboard",
+      "com.tencent.wetype",
+      "com.tencent.wetype.keyboard",
       "com.tencent.inputmethod.WeChatInput",
       "com.tencent.inputmethod.WeChatInput.keyboard",
       "com.tencent.wcinput",
