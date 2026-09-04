@@ -28,4 +28,7 @@
 // 判断 view 是否是按键视图
 - (BOOL)isKeyView:(UIView *)view;
 
+// 从 view 向上查找真正的按键视图
+- (UIView *)findKeyViewFromView:(UIView *)view;
+
 @end
