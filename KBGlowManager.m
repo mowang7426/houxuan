@@ -80,6 +80,8 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
                                          green:[custom[1] doubleValue]
                                           blue:[custom[2] doubleValue]
                                          alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
+    } else if ([defaults boolForKey:@"colorGreen"]) {
+        self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
     } else if ([defaults boolForKey:@"colorWhite"]) {
         self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
     } else if ([defaults boolForKey:@"colorPink"]) {
@@ -158,6 +160,7 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
     if (!self.enabled || !view || ![self isCurrentKeyboardEnabled]) return;
 
     UIView *keyView = [self findKeyViewFromView:view];
+    if (!keyView) keyView = view;
     UIView *container = keyView.superview ?: keyView;
     if (!container) return;
 

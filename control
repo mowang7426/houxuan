@@ -1,9 +1,9 @@
-Package: com.mowang.kbglow.prefs
-Name: KBGlow Preferences
-Version: 1.0.2
+Package: com.mowang.kbglow
+Name: KBGlow
+Version: 1.0.3
 Architecture: iphoneos-arm
-Description: KBGlow 偏好设置面板
+Description: 第三方键盘按键发光效果插件
 Maintainer: MoWang
 Author: MoWang
 Section: Tweaks
-Depends: preferenceloader
+Depends: mobilesubstrate, preferenceloader
