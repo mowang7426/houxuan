@@ -1,5 +1,6 @@
 #import "RootListController.h"
 #import "ColorPickerController.h"
+#import "AnimationPickerController.h"
 
 static NSString *const kSuite = @"com.mowang.kbglow";
 
@@ -19,20 +20,18 @@ static NSString *const kSuite = @"com.mowang.kbglow";
 
         [specs addObject:[self groupSpecifierWithName:@"发光效果"]];
 
-        PSSpecifier *animType = [self linkListSpecifierWithName:@"动画类型"
-                                                              key:@"animationType"
-                                                           titles:@[@"涟漪扩散", @"常驻光晕", @"粒子爆发"]
-                                                           values:@[@0, @1, @2]];
+        PSSpecifier *animType = [PSSpecifier preferenceSpecifierNamed:@"动画类型"
+                                                                  target:self
+                                                                     set:nil get:nil
+                                                                  detail:[AnimationPickerController class]
+                                                                    cell:PSLinkCell edit:nil];
         [specs addObject:animType];
 
         PSSpecifier *colorSpec = [PSSpecifier preferenceSpecifierNamed:@"发光颜色"
                                                                    target:self
-                                                                      set:@selector(setPreferenceValue:specifier:)
-                                                                      get:@selector(readPreferenceValue:)
+                                                                      set:nil get:nil
                                                                    detail:[ColorPickerController class]
-                                                                     cell:PSLinkCell
-                                                                     edit:nil];
-        [colorSpec setProperty:@"glowColor" forKey:@"key"];
+                                                                     cell:PSLinkCell edit:nil];
         [specs addObject:colorSpec];
 
         [specs addObject:[self sliderSpecifierWithName:@"发光大小" key:@"glowSize" min:20 max:150 default:60]];
@@ -41,34 +40,18 @@ static NSString *const kSuite = @"com.mowang.kbglow";
         [specs addObject:[self switchSpecifierWithName:@"跟随手指位置" key:@"followFinger" default:YES]];
 
         [specs addObject:[self groupSpecifierWithName:@"其他"]];
-
         PSSpecifier *resetBtn = [PSSpecifier preferenceSpecifierNamed:@"重置所有设置"
                                                                  target:self
                                                                     set:nil
-                                                                    get:nil
-                                                                 detail:nil
-                                                                   cell:PSButtonCell
-                                                                   edit:nil];
-        [resetBtn setProperty:NSStringFromSelector(@selector(resetSettings)) forKey:@"action"];
+                                                                    get:nil detail:nil cell:PSButtonCell edit:nil];
+        resetBtn.buttonAction = @selector(resetSettings:);
         [specs addObject:resetBtn];
 
         [specs addObject:[self groupSpecifierWithName:@"关于"]];
-        PSSpecifier *about = [PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.0"
-                                                               target:self
-                                                                  set:nil
-                                                                  get:nil
-                                                               detail:nil
-                                                                 cell:PSStaticTextCell
-                                                                 edit:nil];
-        [specs addObject:about];
-        PSSpecifier *author = [PSSpecifier preferenceSpecifierNamed:@"作者: MoWang"
-                                                                target:self
-                                                                   set:nil
-                                                                   get:nil
-                                                                detail:nil
-                                                                  cell:PSStaticTextCell
-                                                                  edit:nil];
-        [specs addObject:author];
+        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.1"
+                                                         target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
+        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"作者: MoWang"
+                                                         target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
 
         _specifiers = specs;
     }
@@ -80,45 +63,24 @@ static NSString *const kSuite = @"com.mowang.kbglow";
 }
 
 - (PSSpecifier *)switchSpecifierWithName:(NSString *)name key:(NSString *)key default:(BOOL)def {
-    PSSpecifier *spec = [PSSpecifier preferenceSpecifierNamed:name
-                                                          target:self
+    PSSpecifier *spec = [PSSpecifier preferenceSpecifierNamed:name target:self
                                                              set:@selector(setPreferenceValue:specifier:)
                                                              get:@selector(readPreferenceValue:)
-                                                          detail:nil
-                                                            cell:PSSwitchCell
-                                                            edit:nil];
+                                                          detail:nil cell:PSSwitchCell edit:nil];
     [spec setProperty:key forKey:@"key"];
     [spec setProperty:@(def) forKey:@"default"];
     return spec;
 }
 
 - (PSSpecifier *)sliderSpecifierWithName:(NSString *)name key:(NSString *)key min:(CGFloat)min max:(CGFloat)max default:(CGFloat)def {
-    PSSpecifier *spec = [PSSpecifier preferenceSpecifierNamed:name
-                                                          target:self
+    PSSpecifier *spec = [PSSpecifier preferenceSpecifierNamed:name target:self
                                                              set:@selector(setPreferenceValue:specifier:)
                                                              get:@selector(readPreferenceValue:)
-                                                          detail:nil
-                                                            cell:PSSliderCell
-                                                            edit:nil];
+                                                          detail:nil cell:PSSliderCell edit:nil];
     [spec setProperty:key forKey:@"key"];
     [spec setProperty:@(min) forKey:@"minimumValue"];
     [spec setProperty:@(max) forKey:@"maximumValue"];
     [spec setProperty:@(def) forKey:@"default"];
-    return spec;
-}
-
-- (PSSpecifier *)linkListSpecifierWithName:(NSString *)name key:(NSString *)key titles:(NSArray *)titles values:(NSArray *)values {
-    PSSpecifier *spec = [PSSpecifier preferenceSpecifierNamed:name
-                                                          target:self
-                                                             set:@selector(setPreferenceValue:specifier:)
-                                                             get:@selector(readPreferenceValue:)
-                                                          detail:NSClassFromString(@"PSListItemsController")
-                                                            cell:PSLinkCell
-                                                            edit:nil];
-    [spec setProperty:key forKey:@"key"];
-    [spec setProperty:titles forKey:@"titles"];
-    [spec setProperty:values forKey:@"values"];
-    [spec setProperty:@(0) forKey:@"default"];
     return spec;
 }
 
@@ -136,34 +98,20 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     if (!key) return nil;
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     id value = [defaults objectForKey:key];
-    if (value == nil) {
-        value = [specifier propertyForKey:@"default"];
-    }
-    return value;
+    return value ?: [specifier propertyForKey:@"default"];
 }
 
-- (void)resetSettings {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"确认重置"
-                                                                     message:@"将恢复所有设置为默认值，确定吗？"
-                                                              preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"重置" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
-        NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-        [defaults removeObjectForKey:@"enabled"];
-        [defaults removeObjectForKey:@"animationType"];
-        [defaults removeObjectForKey:@"glowColor"];
-        [defaults removeObjectForKey:@"glowSize"];
-        [defaults removeObjectForKey:@"glowDuration"];
-        [defaults removeObjectForKey:@"glowOpacity"];
-        [defaults removeObjectForKey:@"followFinger"];
-        [defaults removeObjectForKey:@"wechatEnabled"];
-        [defaults removeObjectForKey:@"baiduEnabled"];
-        [defaults removeObjectForKey:@"sogouEnabled"];
-        [defaults synchronize];
-        _specifiers = nil;
-        [self reloadSpecifiers];
-    }]];
-    [self presentViewController:alert animated:YES completion:nil];
+- (void)resetSettings:(id)value specifier:(PSSpecifier *)specifier {
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+    NSArray *keys = @[@"enabled", @"animRipple", @"animGlow", @"animParticle", @"animationType",
+                     @"glowColor", @"colorWhite", @"colorPink", @"colorCyan", @"colorOrange",
+                     @"colorPurple", @"colorRed", @"colorBlue", @"customColor", @"glowSize",
+                     @"glowDuration", @"glowOpacity", @"followFinger", @"wechatEnabled",
+                     @"baiduEnabled", @"sogouEnabled", @"customR", @"customG", @"customB"];
+    for (NSString *key in keys) [defaults removeObjectForKey:key];
+    [defaults synchronize];
+    [[NSNotificationCenter defaultCenter] postNotificationName:NSUserDefaultsDidChangeNotification object:nil];
+    [self reloadSpecifiers];
 }
 
 @end
