@@ -1,9 +1,0 @@
-Package: com.ionpotassium.gradientcandidates
-Name: Gradient Candidates
-Version: 0.1.0
-Architecture: iphoneos-arm64
-Description: Gradient colors for the iOS 17 Simplified Chinese keyboard candidate labels.
-Maintainer: ionpotassium
-Author: ionpotassium
-Section: Tweaks
-Depends: mobilesubstrate
