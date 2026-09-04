@@ -7,7 +7,7 @@ BUNDLE_NAME = KBGlowPrefs
 KBGlowPrefs_FILES = RootListController.m ColorPickerController.m
 KBGlowPrefs_INSTALL_PATH = /Library/PreferenceBundles
 KBGlowPrefs_FRAMEWORKS = UIKit
-KBGlowPrefs_PRIVATE_FRAMEWORKS = Preferences
 KBGlowPrefs_CFLAGS = -fobjc-arc
+KBGlowPrefs_LDFLAGS = -undefined dynamic_lookup
 
 include $(THEOS_MAKE_PATH)/bundle.mk
