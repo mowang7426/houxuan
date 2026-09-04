@@ -105,7 +105,7 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
     NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
     if (!bundleID) return NO;
     NSString *lower = [bundleID lowercaseString];
-    if ([lower containsString:@"wechat"] || [lower containsString:@"wcinput"]) {
+    if ([lower containsString:@"wetype"] || [lower containsString:@"wechat"] || [lower containsString:@"wcinput"]) {
         return self.wechatEnabled;
     }
     if ([lower containsString:@"baidu"]) {
