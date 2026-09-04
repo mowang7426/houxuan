@@ -33,7 +33,7 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     return _specifiers;
 }
 
-- (void)selectAnimation:(id)value specifier:(PSSpecifier *)specifier {
+- (void)selectAnimation:(PSSpecifier *)specifier {
     NSString *selected = [specifier propertyForKey:@"animationKey"];
     if (!selected) return;
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];

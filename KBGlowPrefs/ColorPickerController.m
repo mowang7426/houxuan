@@ -60,7 +60,7 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     return spec;
 }
 
-- (void)selectPresetColor:(id)value specifier:(PSSpecifier *)specifier {
+- (void)selectPresetColor:(PSSpecifier *)specifier {
     NSString *selected = [specifier propertyForKey:@"colorKey"];
     if (!selected) return;
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
@@ -87,7 +87,7 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     return value ?: [specifier propertyForKey:@"default"];
 }
 
-- (void)applyCustomColor:(id)value specifier:(PSSpecifier *)specifier {
+- (void)applyCustomColor:(PSSpecifier *)specifier {
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     CGFloat r = [defaults objectForKey:@"customR"] ? [defaults doubleForKey:@"customR"] : 0.0;
     CGFloat g = [defaults objectForKey:@"customG"] ? [defaults doubleForKey:@"customG"] : 1.0;
