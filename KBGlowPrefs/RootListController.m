@@ -42,7 +42,7 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
         [specs addObject:resetBtn];
 
         [specs addObject:[self groupSpecifierWithName:@"关于"]];
-        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.3"
+        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.5"
                                                          target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
         [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"作者: MoWang"
                                                          target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
