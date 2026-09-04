@@ -22,16 +22,12 @@
 
 // 在指定 view 的指定位置触发光效
 - (void)triggerGlowInView:(UIView *)view atPoint:(CGPoint)point;
-- (BOOL)isKeyView:(UIView *)view;
-- (void)beginGlowForTouch:(UITouch *)touch inView:(UIView *)view atPoint:(CGPoint)point;
-- (void)moveGlowForTouch:(UITouch *)touch inView:(UIView *)view atPoint:(CGPoint)point;
-- (void)endGlowForTouch:(UITouch *)touch;
 
 // 判断当前进程是否是支持的键盘且已启用
 - (BOOL)isCurrentKeyboardEnabled;
 
 // 判断 view 是否是按键视图
-
+- (BOOL)isKeyView:(UIView *)view;
 
 // 从 view 向上查找真正的按键视图
 - (UIView *)findKeyViewFromView:(UIView *)view;

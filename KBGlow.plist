@@ -1,20 +1,8 @@
 {
-  Filter = {
-    Bundles = (
-      "com.tencent.inputmethod.sogou",
-      "com.tencent.inputmethod.sogou.keyboard",
-      "com.sohu.inputmethod.sogou",
-      "com.sohu.inputmethod.sogou.keyboard",
-      "com.baidu.input-method",
-      "com.baidu.input-method.keyboard",
-      "com.baidu.inputmethod",
-      "com.baidu.inputmethod.keyboard",
-      "com.tencent.wetype",
-      "com.tencent.wetype.keyboard",
-      "com.tencent.inputmethod.WeChatInput",
-      "com.tencent.inputmethod.WeChatInput.keyboard",
-      "com.tencent.wcinput",
-      "com.tencent.wcinput.keyboard"
-    );
-  };
+ Filter = { Bundles = (
+ "com.tencent.wetype", "com.tencent.wetype.keyboard",
+ "com.tencent.inputmethod.WeChatInput", "com.tencent.inputmethod.WeChatInput.keyboard", "com.tencent.wcinput", "com.tencent.wcinput.keyboard",
+ "com.baidu.input-method", "com.baidu.input-method.keyboard", "com.baidu.inputmethod", "com.baidu.inputmethod.keyboard",
+ "com.tencent.inputmethod.sogou", "com.tencent.inputmethod.sogou.keyboard", "com.sohu.inputmethod.sogou", "com.sohu.inputmethod.sogou.keyboard"
+ ); };
 }
