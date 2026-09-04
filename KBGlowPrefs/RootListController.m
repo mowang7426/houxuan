@@ -9,50 +9,39 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     if (_specifiers == nil) {
         NSMutableArray *specs = [NSMutableArray array];
 
-        // === 总开关 ===
         [specs addObject:[self groupSpecifierWithName:@"总开关"]];
         [specs addObject:[self switchSpecifierWithName:@"启用 KBGlow" key:@"enabled" default:YES]];
 
-        // === 键盘选择 ===
         [specs addObject:[self groupSpecifierWithName:@"启用键盘"]];
         [specs addObject:[self switchSpecifierWithName:@"微信输入法" key:@"wechatEnabled" default:YES]];
         [specs addObject:[self switchSpecifierWithName:@"百度输入法" key:@"baiduEnabled" default:YES]];
         [specs addObject:[self switchSpecifierWithName:@"搜狗输入法" key:@"sogouEnabled" default:YES]];
 
-        // === 效果设置 ===
         [specs addObject:[self groupSpecifierWithName:@"发光效果"]];
 
-        // 动画类型
         PSSpecifier *animType = [self linkListSpecifierWithName:@"动画类型"
                                                               key:@"animationType"
-                                                          titles:@[@"涟漪扩散", @"常驻光晕", @"粒子爆发"]]
-                                                          values:@[@0, @1, @2]];
+                                                           titles:@[@"涟漪扩散", @"常驻光晕", @"粒子爆发"]
+                                                           values:@[@0, @1, @2]];
         [specs addObject:animType];
 
-        // 发光颜色（跳转自定义颜色页）
         PSSpecifier *colorSpec = [PSSpecifier preferenceSpecifierNamed:@"发光颜色"
                                                                    target:self
                                                                       set:@selector(setPreferenceValue:specifier:)
                                                                       get:@selector(readPreferenceValue:)
-                                                                   detail:NSStringFromClass([ColorPickerController class])
+                                                                   detail:[ColorPickerController class]
                                                                      cell:PSLinkCell
                                                                      edit:nil];
         [colorSpec setProperty:@"glowColor" forKey:@"key"];
         [specs addObject:colorSpec];
 
-        // 发光大小
         [specs addObject:[self sliderSpecifierWithName:@"发光大小" key:@"glowSize" min:20 max:150 default:60]];
-        // 动画时长
         [specs addObject:[self sliderSpecifierWithName:@"动画时长(秒)" key:@"glowDuration" min:0.1 max:2.0 default:0.6]];
-        // 不透明度
         [specs addObject:[self sliderSpecifierWithName:@"不透明度" key:@"glowOpacity" min:0.1 max:1.0 default:0.8]];
-        // 跟随手指
         [specs addObject:[self switchSpecifierWithName:@"跟随手指位置" key:@"followFinger" default:YES]];
 
-        // === 其他 ===
         [specs addObject:[self groupSpecifierWithName:@"其他"]];
 
-        // 重置按钮
         PSSpecifier *resetBtn = [PSSpecifier preferenceSpecifierNamed:@"重置所有设置"
                                                                  target:self
                                                                     set:nil
@@ -60,10 +49,9 @@ static NSString *const kSuite = @"com.mowang.kbglow";
                                                                  detail:nil
                                                                    cell:PSButtonCell
                                                                    edit:nil];
-        [resetBtn setProperty:@selector(resetSettings) forKey:@"action"];
+        [resetBtn setProperty:NSStringFromSelector(@selector(resetSettings)) forKey:@"action"];
         [specs addObject:resetBtn];
 
-        // 关于
         [specs addObject:[self groupSpecifierWithName:@"关于"]];
         PSSpecifier *about = [PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.0"
                                                                target:self
@@ -86,8 +74,6 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     }
     return _specifiers;
 }
-
-#pragma mark - Helper
 
 - (PSSpecifier *)groupSpecifierWithName:(NSString *)name {
     return [PSSpecifier preferenceSpecifierNamed:name target:nil set:nil get:nil detail:nil cell:PSGroupCell edit:nil];
@@ -126,7 +112,7 @@ static NSString *const kSuite = @"com.mowang.kbglow";
                                                           target:self
                                                              set:@selector(setPreferenceValue:specifier:)
                                                              get:@selector(readPreferenceValue:)
-                                                          detail:@"PSListItemsController"
+                                                          detail:NSClassFromString(@"PSListItemsController")
                                                             cell:PSLinkCell
                                                             edit:nil];
     [spec setProperty:key forKey:@"key"];
@@ -136,24 +122,18 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     return spec;
 }
 
-#pragma mark - Preference读写
-
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key) return;
-
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     [defaults setObject:value forKey:key];
     [defaults synchronize];
-
-    // 通知设置变化
     [[NSNotificationCenter defaultCenter] postNotificationName:NSUserDefaultsDidChangeNotification object:nil];
 }
 
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key) return nil;
-
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     id value = [defaults objectForKey:key];
     if (value == nil) {
@@ -161,8 +141,6 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     }
     return value;
 }
-
-#pragma mark - 重置
 
 - (void)resetSettings {
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"确认重置"
@@ -182,7 +160,6 @@ static NSString *const kSuite = @"com.mowang.kbglow";
         [defaults removeObjectForKey:@"baiduEnabled"];
         [defaults removeObjectForKey:@"sogouEnabled"];
         [defaults synchronize];
-
         _specifiers = nil;
         [self reloadSpecifiers];
     }]];

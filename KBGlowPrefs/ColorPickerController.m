@@ -9,9 +9,7 @@ static NSString *const kColorKey = @"glowColor";
     if (_specifiers == nil) {
         NSMutableArray *specs = [NSMutableArray array];
 
-        // 预设颜色
         [specs addObject:[self groupSpecifierWithName:@"预设颜色"]];
-
         NSArray *presets = @[
             @{@"name": @"绿色", @"color": [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0]},
             @{@"name": @"蓝色", @"color": [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0]},
@@ -32,17 +30,15 @@ static NSString *const kColorKey = @"glowColor";
                                                                     cell:PSButtonCell
                                                                     edit:nil];
             [spec setProperty:preset[@"color"] forKey:@"color"];
-            [spec setProperty:@selector(selectPresetColor:) forKey:@"action"];
+            [spec setProperty:NSStringFromSelector(@selector(selectPresetColor:)) forKey:@"action"];
             [specs addObject:spec];
         }
 
-        // 自定义颜色
         [specs addObject:[self groupSpecifierWithName:@"自定义颜色"]];
         [specs addObject:[self sliderSpecifierWithName:@"红色 R" key:@"customR" min:0 max:1 default:0]];
         [specs addObject:[self sliderSpecifierWithName:@"绿色 G" key:@"customG" min:0 max:1 default:1]];
         [specs addObject:[self sliderSpecifierWithName:@"蓝色 B" key:@"customB" min:0 max:1 default:0]];
 
-        // 应用自定义颜色按钮
         PSSpecifier *applyBtn = [PSSpecifier preferenceSpecifierNamed:@"应用自定义颜色"
                                                                   target:self
                                                                      set:nil
@@ -50,7 +46,7 @@ static NSString *const kColorKey = @"glowColor";
                                                                   detail:nil
                                                                     cell:PSButtonCell
                                                                     edit:nil];
-        [applyBtn setProperty:@selector(applyCustomColor) forKey:@"action"];
+        [applyBtn setProperty:NSStringFromSelector(@selector(applyCustomColor)) forKey:@"action"];
         [specs addObject:applyBtn];
 
         _specifiers = specs;
@@ -77,15 +73,11 @@ static NSString *const kColorKey = @"glowColor";
     return spec;
 }
 
-#pragma mark - 预设颜色
-
 - (void)selectPresetColor:(PSSpecifier *)specifier {
     UIColor *color = [specifier propertyForKey:@"color"];
     [self saveColor:color];
     [self showToast:@"颜色已应用"];
 }
-
-#pragma mark - 自定义颜色
 
 - (void)setCustomValue:(id)value specifier:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
@@ -114,17 +106,13 @@ static NSString *const kColorKey = @"glowColor";
     [self showToast:@"自定义颜色已应用"];
 }
 
-#pragma mark - 保存颜色
-
 - (void)saveColor:(UIColor *)color {
     CGFloat r, g, b, a;
     [color getRed:&r green:&g blue:&b alpha:&a];
     NSArray *components = @[@(r), @(g), @(b), @(a)];
-
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     [defaults setObject:components forKey:kColorKey];
     [defaults synchronize];
-
     [[NSNotificationCenter defaultCenter] postNotificationName:NSUserDefaultsDidChangeNotification object:nil];
 }
 
