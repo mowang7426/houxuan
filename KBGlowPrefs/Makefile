@@ -12,3 +12,6 @@ KBGlowPrefs_LDFLAGS = -undefined dynamic_lookup
 KBGlowPrefs_INFO_PLIST = Info.plist
 
 include $(THEOS_MAKE_PATH)/bundle.mk
+
+after-stage::
+	cp Info.plist $(THEOS_STAGING_DIR)/Library/PreferenceBundles/KBGlowPrefs.bundle/Info.plist
