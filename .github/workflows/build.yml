@@ -1,4 +1,4 @@
-name: Build SBCPUFloating V3.0
+name: Build GradientCandidates iOS17 RootHide
 
 on:
   workflow_dispatch:
@@ -23,6 +23,7 @@ jobs:
 
       - name: Install RootHide Theos
         run: |
+          set -e
           rm -rf "$HOME/theos"
           git clone --recursive https://github.com/roothide/theos.git "$HOME/theos"
 
@@ -43,11 +44,14 @@ jobs:
           echo "THEOS_MAKE_PATH=$THEOS_MAKE_PATH"
           test -f "$THEOS/makefiles/common.mk"
           test -f "$THEOS/makefiles/tweak.mk"
-          test -f "$THEOS/makefiles/aggregate.mk"
 
-      - name: Verify package metadata
+      - name: Verify GradientCandidates source
         run: |
           set -e
+          test -f Makefile
+          test -f Tweak.xm
+          test -f control
+          test -f GradientCandidates.plist
           grep -E '^(Package|Name|Version|Depends):' control
 
       - name: Prepare build directory
@@ -55,46 +59,31 @@ jobs:
           rm -rf build
           mkdir -p build
 
-      - name: Build Rootless
-        run: |
-          set -e
-          make clean
-          THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1
-
-      - name: Copy Rootless package
-        run: |
-          set -e
-          ROOTLESS_DEB=$(find packages -maxdepth 1 -type f -name "*.deb" | head -n 1)
-          cp "$ROOTLESS_DEB" "build/SBCPUFloating-V3.0-rootless.deb"
-
-      - name: Clean before RootHide
-        run: |
-          make clean
-          rm -rf packages
-
       - name: Build RootHide
         run: |
           set -e
+          make clean
           THEOS_PACKAGE_SCHEME=roothide make package FINALPACKAGE=1
 
       - name: Copy RootHide package
         run: |
           set -e
           ROOTHIDE_DEB=$(find packages -maxdepth 1 -type f -name "*.deb" | head -n 1)
-          cp "$ROOTHIDE_DEB" "build/SBCPUFloating-V3.0-roothide.deb"
+          test -n "$ROOTHIDE_DEB"
+          cp "$ROOTHIDE_DEB" "build/GradientCandidates-iOS17-roothide.deb"
 
-      - name: Verify preference bundle is packaged
+      - name: Verify DEB package
         run: |
           set -e
-          for deb in build/*.deb; do
-            echo "===== Checking $deb ====="
-            dpkg-deb -c "$deb" | grep -E 'PreferenceBundles/SBCPUPrefs\.bundle|PreferenceLoader/Preferences/SBCPUPrefs\.plist'
-          done
+          DEB="build/GradientCandidates-iOS17-roothide.deb"
+          test -f "$DEB"
+          echo "===== Package contents ====="
+          dpkg-deb -I "$DEB"
+          echo "===== Installed files ====="
+          dpkg-deb -c "$DEB"
 
-      - name: Upload DEB packages
+      - name: Upload DEB package
         uses: actions/upload-artifact@v4
         with:
-          name: SBCPUFloating-V3.0
-          path: build/*.deb
-
-
+          name: GradientCandidates-iOS17-RootHide
+          path: build/GradientCandidates-iOS17-roothide.deb
