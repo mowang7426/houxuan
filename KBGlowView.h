@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
 
 typedef NS_ENUM(NSInteger, KBGlowAnimationType) {
     KBGlowAnimationTypeRipple = 0,    // 涟漪扩散
@@ -6,7 +7,7 @@ typedef NS_ENUM(NSInteger, KBGlowAnimationType) {
     KBGlowAnimationTypeParticle = 2,  // 粒子爆发
 };
 
-@interface KBGlowView : UIView
+@interface KBGlowView : UIView <CAAnimationDelegate>
 
 @property (nonatomic, strong) UIColor *glowColor;
 @property (nonatomic, assign) CGFloat glowSize;         // 发光半径
