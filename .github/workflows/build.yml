@@ -1,4 +1,4 @@
-name: Build GradientCandidates iOS17 RootHide
+name: Build KBGlow iOS17 RootHide
 
 on:
   workflow_dispatch:
@@ -45,13 +45,17 @@ jobs:
           test -f "$THEOS/makefiles/common.mk"
           test -f "$THEOS/makefiles/tweak.mk"
 
-      - name: Verify GradientCandidates source
+      - name: Verify KBGlow source
         run: |
           set -e
           test -f Makefile
           test -f Tweak.xm
           test -f control
-          test -f GradientCandidates.plist
+          test -f KBGlow.plist
+          test -f KBGlowPrefs/Makefile
+          test -f KBGlowPrefs/Info.plist
+          test -f KBGlowPrefs/RootListController.m
+          test -f KBGlowPrefs/ColorPickerController.m
           grep -E '^(Package|Name|Version|Depends):' control
 
       - name: Prepare build directory
@@ -70,20 +74,43 @@ jobs:
           set -e
           ROOTHIDE_DEB=$(find packages -maxdepth 1 -type f -name "*.deb" | head -n 1)
           test -n "$ROOTHIDE_DEB"
-          cp "$ROOTHIDE_DEB" "build/GradientCandidates-iOS17-roothide.deb"
+          cp "$ROOTHIDE_DEB" "build/KBGlow-iOS17-roothide.deb"
 
       - name: Verify DEB package
         run: |
           set -e
-          DEB="build/GradientCandidates-iOS17-roothide.deb"
+          DEB="build/KBGlow-iOS17-roothide.deb"
           test -f "$DEB"
-          echo "===== Package contents ====="
+          echo "===== Package info ====="
           dpkg-deb -I "$DEB"
+          echo ""
           echo "===== Installed files ====="
           dpkg-deb -c "$DEB"
+          echo ""
+          echo "===== Check PreferenceBundle ====="
+          if dpkg-deb -c "$DEB" | grep -q "KBGlowPrefs.bundle"; then
+            echo "✓ KBGlowPrefs.bundle found in deb"
+            mkdir -p /tmp/deb_check
+            dpkg-deb -x "$DEB" /tmp/deb_check
+            BUNDLE_PATH=$(find /tmp/deb_check -name "KBGlowPrefs.bundle" -type d | head -1)
+            echo "Bundle path: $BUNDLE_PATH"
+            echo "Bundle contents:"
+            ls -laR "$BUNDLE_PATH"
+            BUNDLE_SIZE=$(du -sk "$BUNDLE_PATH" | cut -f1)
+            echo "Bundle size: ${BUNDLE_SIZE} KB"
+            if [ "$BUNDLE_SIZE" -gt 0 ]; then
+              echo "✓ Bundle is NOT empty"
+            else
+              echo "✗ Bundle is EMPTY!"
+              exit 1
+            fi
+          else
+            echo "✗ KBGlowPrefs.bundle NOT found in deb!"
+            exit 1
+          fi
 
       - name: Upload DEB package
         uses: actions/upload-artifact@v4
         with:
-          name: GradientCandidates-iOS17-RootHide
-          path: build/GradientCandidates-iOS17-roothide.deb
+          name: KBGlow-iOS17-RootHide
+          path: build/KBGlow-iOS17-roothide.deb
