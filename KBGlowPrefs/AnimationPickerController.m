@@ -1,58 +1,10 @@
-#import <CoreFoundation/CoreFoundation.h>
 #import "AnimationPickerController.h"
-
-static NSString *const kSuite = @"com.mowang.kbglow";
-static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
-
+static NSString *const suite=@"com.mowang.kbglow"; static CFStringRef const note=CFSTR("com.mowang.kbglow.settingsChanged");
 @implementation AnimationPickerController
-
-- (NSArray *)specifiers {
-    if (_specifiers == nil) {
-        NSMutableArray *specs = [NSMutableArray array];
-        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"动画类型"
-                                                         target:nil set:nil get:nil detail:nil cell:PSGroupCell edit:nil]];
-        NSArray *items = @[
-            @{ @"title": @"涟漪扩散", @"key": @"animRipple" },
-            @{ @"title": @"常驻光晕", @"key": @"animGlow" },
-            @{ @"title": @"粒子爆发", @"key": @"animParticle" }
-        ];
-        for (NSDictionary *item in items) {
-            PSSpecifier *spec = [PSSpecifier preferenceSpecifierNamed:item[@"title"]
-                                                                  target:self
-                                                                     set:@selector(setAnimationValue:specifier:)
-                                                                     get:@selector(readAnimationValue:)
-                                                                  detail:nil cell:PSSwitchCell edit:nil];
-            [spec setProperty:item[@"key"] forKey:@"animationKey"];
-            [spec setProperty:@NO forKey:@"default"];
-            [specs addObject:spec];
-        }
-        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"同一时间只启用一种动画。"
-                                                             target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
-        _specifiers = specs;
-    }
-    return _specifiers;
-}
-
-- (void)setAnimationValue:(id)value specifier:(PSSpecifier *)specifier {
-    if (![value respondsToSelector:@selector(boolValue)]) return;
-    if (![value boolValue]) return;
-    NSString *selected = [specifier propertyForKey:@"animationKey"];
-    if (!selected) return;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    for (NSString *key in @[@"animRipple", @"animGlow", @"animParticle"]) {
-        [defaults setBool:[key isEqualToString:selected] forKey:key];
-    }
-    [defaults synchronize];
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
-    [self reloadSpecifiers];
-}
-
-- (id)readAnimationValue:(PSSpecifier *)specifier {
-    NSString *key = [specifier propertyForKey:@"animationKey"];
-    if (!key) return @NO;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    if ([defaults objectForKey:key]) return @([defaults boolForKey:key]);
-    return [key isEqualToString:@"animRipple"] ? @YES : @NO;
-}
-
+- (NSArray *)specifiers { if (!_specifiers) {
+ NSMutableArray *a=[NSMutableArray array]; [a addObject:[PSSpecifier groupSpecifierWithName:@"选择一种动画"]];
+ NSArray *names=@[@"涟漪扩散",@"常驻光晕",@"粒子爆发"]; for (NSInteger i=0;i<3;i++){ PSSpecifier *s=[PSSpecifier preferenceSpecifierNamed:names[i] target:self set:@selector(setAnimation:specifier:) get:@selector(getAnimation:) detail:nil cell:PSSwitchCell edit:nil]; [s setProperty:@(i) forKey:@"animationValue"]; [a addObject:s]; }
+ [a addObject:[PSSpecifier groupSpecifierWithName:@"说明"]]; [a addObject:[PSSpecifier preferenceSpecifierNamed:@"每次只能启用一种动画，修改后立即同步到键盘进程。" target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]]; _specifiers=a; } return _specifiers; }
+- (id)getAnimation:(PSSpecifier *)s { NSInteger v=[[s propertyForKey:@"animationValue"] integerValue]; NSUserDefaults*d=[[NSUserDefaults alloc]initWithSuiteName:suite]; return @([d integerForKey:@"animationType"]==v); }
+- (void)setAnimation:(id)value specifier:(PSSpecifier *)s { if (![value boolValue]) return; NSInteger v=[[s propertyForKey:@"animationValue"] integerValue]; NSUserDefaults*d=[[NSUserDefaults alloc]initWithSuiteName:suite]; [d setInteger:v forKey:@"animationType"]; [d synchronize]; CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),note,NULL,NULL,true); [self reloadSpecifiers]; }
 @end
