@@ -45,17 +45,37 @@ static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
     self.baiduEnabled = [defaults boolForKey:@"baiduEnabled"] ?: YES;
     self.sogouEnabled = [defaults boolForKey:@"sogouEnabled"] ?: YES;
 
-    // 颜色
-    NSArray *colorComponents = [defaults arrayForKey:@"glowColor"];
-    if (colorComponents && colorComponents.count >= 3) {
-        CGFloat r = [colorComponents[0] floatValue];
-        CGFloat g = [colorComponents[1] floatValue];
-        CGFloat b = [colorComponents[2] floatValue];
-        CGFloat a = colorComponents.count >= 4 ? [colorComponents[3] floatValue] : 1.0;
-        self.glowColor = [UIColor colorWithRed:r green:g blue:b alpha:a];
+    // 颜色 - 优先读取颜色名称
+    NSString *colorName = [defaults stringForKey:@"glowColorName"];
+    if (colorName) {
+        NSDictionary *colorMap = @{
+            @"green":  [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0],
+            @"blue":   [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0],
+            @"red":    [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0],
+            @"purple": [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0],
+            @"orange": [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0],
+            @"cyan":   [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0],
+            @"pink":   [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0],
+            @"white":  [UIColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:1.0],
+        };
+        UIColor *mapped = colorMap[colorName];
+        if (mapped) {
+            self.glowColor = mapped;
+        } else {
+            self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+        }
     } else {
-        // 默认绿色
-        self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+        // 兼容旧版：读取颜色数组
+        NSArray *colorComponents = [defaults arrayForKey:@"glowColor"];
+        if (colorComponents && colorComponents.count >= 3) {
+            CGFloat r = [colorComponents[0] floatValue];
+            CGFloat g = [colorComponents[1] floatValue];
+            CGFloat b = [colorComponents[2] floatValue];
+            CGFloat a = colorComponents.count >= 4 ? [colorComponents[3] floatValue] : 1.0;
+            self.glowColor = [UIColor colorWithRed:r green:g blue:b alpha:a];
+        } else {
+            self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+        }
     }
 }
 
