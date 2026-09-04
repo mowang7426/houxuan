@@ -68,15 +68,13 @@
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSLinkCell</string>
+			<string>PSLinkListCell</string>
 			<key>label</key>
 			<string>动画类型</string>
 			<key>key</key>
 			<string>animationType</string>
 			<key>default</key>
 			<integer>0</integer>
-			<key>detail</key>
-			<string>PSListItemsController</string>
 			<key>values</key>
 			<array>
 				<integer>0</integer>
