@@ -1,6 +1,8 @@
+#import <CoreFoundation/CoreFoundation.h>
 #import "ColorPickerController.h"
 
 static NSString *const kSuite = @"com.mowang.kbglow";
+static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 
 @implementation ColorPickerController
 
@@ -21,10 +23,11 @@ static NSString *const kSuite = @"com.mowang.kbglow";
         for (NSDictionary *preset in presets) {
             PSSpecifier *spec = [PSSpecifier preferenceSpecifierNamed:preset[@"name"]
                                                                   target:self
-                                                                     set:nil
-                                                                     get:nil detail:nil cell:PSButtonCell edit:nil];
+                                                                     set:@selector(setPresetValue:specifier:)
+                                                                     get:@selector(readPresetValue:)
+                                                                  detail:nil cell:PSSwitchCell edit:nil];
             [spec setProperty:preset[@"key"] forKey:@"colorKey"];
-            spec.buttonAction = @selector(selectPresetColor:);
+            [spec setProperty:@NO forKey:@"default"];
             [specs addObject:spec];
         }
 
@@ -33,12 +36,9 @@ static NSString *const kSuite = @"com.mowang.kbglow";
         [specs addObject:[self sliderSpecifierWithName:@"绿色 G" key:@"customG" min:0 max:1 default:1]];
         [specs addObject:[self sliderSpecifierWithName:@"蓝色 B" key:@"customB" min:0 max:1 default:0]];
         PSSpecifier *applyBtn = [PSSpecifier preferenceSpecifierNamed:@"应用自定义颜色"
-                                                                  target:self
-                                                                     set:nil
-                                                                     get:nil detail:nil cell:PSButtonCell edit:nil];
+                                                                  target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
         applyBtn.buttonAction = @selector(applyCustomColor:);
         [specs addObject:applyBtn];
-
         _specifiers = specs;
     }
     return _specifiers;
@@ -51,7 +51,7 @@ static NSString *const kSuite = @"com.mowang.kbglow";
 - (PSSpecifier *)sliderSpecifierWithName:(NSString *)name key:(NSString *)key min:(CGFloat)min max:(CGFloat)max default:(CGFloat)def {
     PSSpecifier *spec = [PSSpecifier preferenceSpecifierNamed:name target:self
                                                              set:@selector(setCustomValue:specifier:)
-                                                             get:@selector(readCustomValue:specifier:)
+                                                             get:@selector(readCustomValue:)
                                                           detail:nil cell:PSSliderCell edit:nil];
     [spec setProperty:key forKey:@"key"];
     [spec setProperty:@(min) forKey:@"minimumValue"];
@@ -60,7 +60,8 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     return spec;
 }
 
-- (void)selectPresetColor:(PSSpecifier *)specifier {
+- (void)setPresetValue:(id)value specifier:(PSSpecifier *)specifier {
+    if (![value respondsToSelector:@selector(boolValue)] || ![value boolValue]) return;
     NSString *selected = [specifier propertyForKey:@"colorKey"];
     if (!selected) return;
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
@@ -68,8 +69,17 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     for (NSString *key in keys) [defaults setBool:[key isEqualToString:selected] forKey:key];
     [defaults removeObjectForKey:@"customColor"];
     [defaults synchronize];
-    [[NSNotificationCenter defaultCenter] postNotificationName:NSUserDefaultsDidChangeNotification object:nil];
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
+    [self reloadSpecifiers];
     [self showToast:@"颜色已应用"];
+}
+
+- (id)readPresetValue:(PSSpecifier *)specifier {
+    NSString *key = [specifier propertyForKey:@"colorKey"];
+    if (!key) return @NO;
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+    if ([defaults objectForKey:key]) return @([defaults boolForKey:key]);
+    return [key isEqualToString:@"colorGreen"] ? @YES : @NO;
 }
 
 - (void)setCustomValue:(id)value specifier:(PSSpecifier *)specifier {
@@ -92,11 +102,13 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     CGFloat r = [defaults objectForKey:@"customR"] ? [defaults doubleForKey:@"customR"] : 0.0;
     CGFloat g = [defaults objectForKey:@"customG"] ? [defaults doubleForKey:@"customG"] : 1.0;
     CGFloat b = [defaults objectForKey:@"customB"] ? [defaults doubleForKey:@"customB"] : 0.0;
-    NSArray *keys = @[@"colorGreen", @"colorBlue", @"colorRed", @"colorPurple", @"colorOrange", @"colorCyan", @"colorPink", @"colorWhite"];
-    for (NSString *key in keys) [defaults setBool:NO forKey:key];
+    for (NSString *key in @[@"colorGreen", @"colorBlue", @"colorRed", @"colorPurple", @"colorOrange", @"colorCyan", @"colorPink", @"colorWhite"]) {
+        [defaults setBool:NO forKey:key];
+    }
     [defaults setObject:@[@(r), @(g), @(b), @1.0] forKey:@"customColor"];
     [defaults synchronize];
-    [[NSNotificationCenter defaultCenter] postNotificationName:NSUserDefaultsDidChangeNotification object:nil];
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
+    [self reloadSpecifiers];
     [self showToast:@"自定义颜色已应用"];
 }
 

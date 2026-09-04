@@ -1,6 +1,6 @@
 Package: com.mowang.kbglow.prefs
 Name: KBGlow Preferences
-Version: 1.0.0
+Version: 1.0.3
 Architecture: iphoneos-arm
 Description: KBGlow 偏好设置面板
 Maintainer: MoWang

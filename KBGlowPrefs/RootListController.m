@@ -1,15 +1,16 @@
+#import <CoreFoundation/CoreFoundation.h>
 #import "RootListController.h"
 #import "ColorPickerController.h"
 #import "AnimationPickerController.h"
 
 static NSString *const kSuite = @"com.mowang.kbglow";
+static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 
 @implementation RootListController
 
 - (NSArray *)specifiers {
     if (_specifiers == nil) {
         NSMutableArray *specs = [NSMutableArray array];
-
         [specs addObject:[self groupSpecifierWithName:@"总开关"]];
         [specs addObject:[self switchSpecifierWithName:@"启用 KBGlow" key:@"enabled" default:YES]];
 
@@ -19,21 +20,16 @@ static NSString *const kSuite = @"com.mowang.kbglow";
         [specs addObject:[self switchSpecifierWithName:@"搜狗输入法" key:@"sogouEnabled" default:YES]];
 
         [specs addObject:[self groupSpecifierWithName:@"发光效果"]];
-
         PSSpecifier *animType = [PSSpecifier preferenceSpecifierNamed:@"动画类型"
-                                                                  target:self
-                                                                     set:nil get:nil
+                                                                  target:self set:nil get:nil
                                                                   detail:[AnimationPickerController class]
-                                                                    cell:PSLinkCell edit:nil];
+                                                                  cell:PSLinkCell edit:nil];
         [specs addObject:animType];
-
         PSSpecifier *colorSpec = [PSSpecifier preferenceSpecifierNamed:@"发光颜色"
-                                                                   target:self
-                                                                      set:nil get:nil
+                                                                   target:self set:nil get:nil
                                                                    detail:[ColorPickerController class]
-                                                                     cell:PSLinkCell edit:nil];
+                                                                   cell:PSLinkCell edit:nil];
         [specs addObject:colorSpec];
-
         [specs addObject:[self sliderSpecifierWithName:@"发光大小" key:@"glowSize" min:20 max:150 default:60]];
         [specs addObject:[self sliderSpecifierWithName:@"动画时长(秒)" key:@"glowDuration" min:0.1 max:2.0 default:0.6]];
         [specs addObject:[self sliderSpecifierWithName:@"不透明度" key:@"glowOpacity" min:0.1 max:1.0 default:0.8]];
@@ -41,18 +37,15 @@ static NSString *const kSuite = @"com.mowang.kbglow";
 
         [specs addObject:[self groupSpecifierWithName:@"其他"]];
         PSSpecifier *resetBtn = [PSSpecifier preferenceSpecifierNamed:@"重置所有设置"
-                                                                 target:self
-                                                                    set:nil
-                                                                    get:nil detail:nil cell:PSButtonCell edit:nil];
+                                                                 target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
         resetBtn.buttonAction = @selector(resetSettings:);
         [specs addObject:resetBtn];
 
         [specs addObject:[self groupSpecifierWithName:@"关于"]];
-        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.1"
+        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.3"
                                                          target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
         [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"作者: MoWang"
                                                          target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
-
         _specifiers = specs;
     }
     return _specifiers;
@@ -90,7 +83,7 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     [defaults setObject:value forKey:key];
     [defaults synchronize];
-    [[NSNotificationCenter defaultCenter] postNotificationName:NSUserDefaultsDidChangeNotification object:nil];
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
 }
 
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
@@ -101,16 +94,16 @@ static NSString *const kSuite = @"com.mowang.kbglow";
     return value ?: [specifier propertyForKey:@"default"];
 }
 
-- (void)resetSettings:(id)value specifier:(PSSpecifier *)specifier {
+- (void)resetSettings:(PSSpecifier *)specifier {
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     NSArray *keys = @[@"enabled", @"animRipple", @"animGlow", @"animParticle", @"animationType",
-                     @"glowColor", @"colorWhite", @"colorPink", @"colorCyan", @"colorOrange",
-                     @"colorPurple", @"colorRed", @"colorBlue", @"customColor", @"glowSize",
-                     @"glowDuration", @"glowOpacity", @"followFinger", @"wechatEnabled",
-                     @"baiduEnabled", @"sogouEnabled", @"customR", @"customG", @"customB"];
+                      @"glowColor", @"colorGreen", @"colorWhite", @"colorPink", @"colorCyan", @"colorOrange",
+                      @"colorPurple", @"colorRed", @"colorBlue", @"customColor", @"glowSize",
+                      @"glowDuration", @"glowOpacity", @"followFinger", @"wechatEnabled",
+                      @"baiduEnabled", @"sogouEnabled", @"customR", @"customG", @"customB"];
     for (NSString *key in keys) [defaults removeObjectForKey:key];
     [defaults synchronize];
-    [[NSNotificationCenter defaultCenter] postNotificationName:NSUserDefaultsDidChangeNotification object:nil];
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
 }
 
