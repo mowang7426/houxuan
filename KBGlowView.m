@@ -11,10 +11,12 @@
 - (void)updateTrackingPoint:(CGPoint)p { if(!_tracking||!_glow)return; [CATransaction begin]; [CATransaction setDisableActions:YES]; _glow.position=p; [CATransaction commit]; }
 - (void)finishTrackingAtPoint:(CGPoint)p cancelled:(BOOL)cancelled {
     if(!_glow){ [self removeFromSuperview]; return; } _tracking=NO; if(!cancelled) [self updateTrackingPoint:p];
-    CGFloat a=MIN(1,MAX(.05,self.glowOpacity)); NSTimeInterval d=MAX(.08,self.glowDuration);
+    CGFloat a=MIN(1,MAX(.05,self.glowOpacity)); NSTimeInterval d=MIN(MAX(.08,self.glowDuration),.25);
+    [_glow removeAnimationForKey:@"pulse"];
+    [_glow removeAnimationForKey:@"pressIn"];
     CABasicAnimation *fade=[CABasicAnimation animationWithKeyPath:@"opacity"]; fade.fromValue=@(_glow.presentationLayer?[(CALayer*)_glow.presentationLayer opacity]:a); fade.toValue=@0; fade.duration=d; fade.timingFunction=[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
-    CABasicAnimation *scale=[CABasicAnimation animationWithKeyPath:@"transform.scale"]; scale.fromValue=@1; scale.toValue=(self.animationType==KBGlowAnimationTypeParticle?@1.12:@1.42); scale.duration=d; scale.timingFunction=[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
-    CAAnimationGroup *grp=[CAAnimationGroup animation]; grp.animations=@[fade,scale]; grp.duration=d; grp.delegate=self; [_glow addAnimation:grp forKey:@"finish"];
+    fade.delegate=self;
+    [_glow addAnimation:fade forKey:@"finish"];
 }
 - (void)animationDidStop:(CAAnimation*)anim finished:(BOOL)flag { dispatch_async(dispatch_get_main_queue(),^{ [self removeFromSuperview]; }); }
 - (void)stopAnimation { _tracking=NO; [_glow removeAllAnimations]; [self removeFromSuperview]; }
