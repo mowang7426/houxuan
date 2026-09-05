@@ -1,23 +1,8 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import "AnimationPickerController.h"
 
-static CFStringRef const kAppID = CFSTR("com.mowang.kbglow");
+static NSString *const kSuite = @"com.mowang.kbglow";
 static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
-
-static void KBGlowPrefsSetBool(NSString *key, BOOL value) {
-    CFPreferencesSetAppValue((__bridge CFStringRef)key, value ? kCFBooleanTrue : kCFBooleanFalse, kAppID);
-}
-
-static BOOL KBGlowPrefsGetBool(NSString *key, BOOL def) {
-    Boolean exists = false;
-    Boolean value = CFPreferencesGetAppBooleanValue((__bridge CFStringRef)key, kAppID, &exists);
-    return exists ? (BOOL)value : def;
-}
-
-static void KBGlowPrefsSyncAndNotify(void) {
-    CFPreferencesAppSynchronize(kAppID);
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
-}
 
 @implementation AnimationPickerController
 
@@ -53,17 +38,23 @@ static void KBGlowPrefsSyncAndNotify(void) {
     if (![value boolValue]) return;
     NSString *selected = [specifier propertyForKey:@"animationKey"];
     if (!selected) return;
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     for (NSString *key in @[@"animRipple", @"animGlow", @"animParticle"]) {
-        KBGlowPrefsSetBool(key, [key isEqualToString:selected]);
+        [defaults setBool:[key isEqualToString:selected] forKey:key];
     }
-    KBGlowPrefsSyncAndNotify();
+    NSInteger type = [selected isEqualToString:@"animGlow"] ? 1 : ([selected isEqualToString:@"animParticle"] ? 2 : 0);
+    [defaults setInteger:type forKey:@"animationType"];
+    [defaults synchronize];
+    CFPreferencesAppSynchronize((__bridge CFStringRef)kSuite);
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
 }
 
 - (id)readAnimationValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"animationKey"];
     if (!key) return @NO;
-    if (KBGlowPrefsGetBool(key, NO)) return @YES;
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+    if ([defaults objectForKey:key]) return @([defaults boolForKey:key]);
     return [key isEqualToString:@"animRipple"] ? @YES : @NO;
 }
 

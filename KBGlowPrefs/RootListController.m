@@ -3,23 +3,8 @@
 #import "ColorPickerController.h"
 #import "AnimationPickerController.h"
 
-static CFStringRef const kAppID = CFSTR("com.mowang.kbglow");
+static NSString *const kSuite = @"com.mowang.kbglow";
 static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
-
-static void KBGlowPrefsSet(NSString *key, id value) {
-    CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)value, kAppID);
-    CFPreferencesAppSynchronize(kAppID);
-}
-
-static id KBGlowPrefsGet(NSString *key) {
-    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)key, kAppID);
-    if (value) return (__bridge_transfer id)value;
-    return nil;
-}
-
-static void KBGlowPrefsNotify(void) {
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
-}
 
 @implementation RootListController
 
@@ -28,10 +13,12 @@ static void KBGlowPrefsNotify(void) {
         NSMutableArray *specs = [NSMutableArray array];
         [specs addObject:[self groupSpecifierWithName:@"总开关"]];
         [specs addObject:[self switchSpecifierWithName:@"启用 KBGlow" key:@"enabled" default:YES]];
+
         [specs addObject:[self groupSpecifierWithName:@"启用键盘"]];
         [specs addObject:[self switchSpecifierWithName:@"微信输入法" key:@"wechatEnabled" default:YES]];
         [specs addObject:[self switchSpecifierWithName:@"百度输入法" key:@"baiduEnabled" default:YES]];
         [specs addObject:[self switchSpecifierWithName:@"搜狗输入法" key:@"sogouEnabled" default:YES]];
+
         [specs addObject:[self groupSpecifierWithName:@"发光效果"]];
         PSSpecifier *animType = [PSSpecifier preferenceSpecifierNamed:@"动画类型"
                                                                   target:self set:nil get:nil
@@ -47,13 +34,15 @@ static void KBGlowPrefsNotify(void) {
         [specs addObject:[self sliderSpecifierWithName:@"动画时长(秒)" key:@"glowDuration" min:0.1 max:2.0 default:0.6]];
         [specs addObject:[self sliderSpecifierWithName:@"不透明度" key:@"glowOpacity" min:0.1 max:1.0 default:0.8]];
         [specs addObject:[self switchSpecifierWithName:@"跟随手指位置" key:@"followFinger" default:YES]];
+
         [specs addObject:[self groupSpecifierWithName:@"其他"]];
         PSSpecifier *resetBtn = [PSSpecifier preferenceSpecifierNamed:@"重置所有设置"
                                                                  target:self set:nil get:nil detail:nil cell:PSButtonCell edit:nil];
         resetBtn.buttonAction = @selector(resetSettings:);
         [specs addObject:resetBtn];
+
         [specs addObject:[self groupSpecifierWithName:@"关于"]];
-        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.3"
+        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.4"
                                                          target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
         [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"作者: MoWang"
                                                          target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
@@ -91,28 +80,44 @@ static void KBGlowPrefsNotify(void) {
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key) return;
-    KBGlowPrefsSet(key, value);
-    KBGlowPrefsNotify();
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+    [defaults setObject:value forKey:key];
+    [defaults synchronize];
+    CFPreferencesAppSynchronize((__bridge CFStringRef)kSuite);
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
 }
 
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key) return nil;
-    id value = KBGlowPrefsGet(key);
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+    id value = [defaults objectForKey:key];
     return value ?: [specifier propertyForKey:@"default"];
 }
 
 - (void)resetSettings:(PSSpecifier *)specifier {
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     NSArray *keys = @[@"enabled", @"animRipple", @"animGlow", @"animParticle", @"animationType",
                       @"glowColor", @"colorGreen", @"colorWhite", @"colorPink", @"colorCyan", @"colorOrange",
                       @"colorPurple", @"colorRed", @"colorBlue", @"customColor", @"glowSize",
                       @"glowDuration", @"glowOpacity", @"followFinger", @"wechatEnabled",
                       @"baiduEnabled", @"sogouEnabled", @"customR", @"customG", @"customB"];
-    for (NSString *key in keys) {
-        CFPreferencesSetAppValue((__bridge CFStringRef)key, NULL, kAppID);
-    }
-    CFPreferencesAppSynchronize(kAppID);
-    KBGlowPrefsNotify();
+    for (NSString *key in keys) [defaults removeObjectForKey:key];
+    [defaults setBool:YES forKey:@"enabled"];
+    [defaults setBool:YES forKey:@"wechatEnabled"];
+    [defaults setBool:YES forKey:@"baiduEnabled"];
+    [defaults setBool:YES forKey:@"sogouEnabled"];
+    [defaults setBool:YES forKey:@"followFinger"];
+    [defaults setBool:YES forKey:@"animRipple"];
+    [defaults setBool:NO forKey:@"animGlow"];
+    [defaults setBool:NO forKey:@"animParticle"];
+    [defaults setBool:YES forKey:@"colorGreen"];
+    [defaults setDouble:60.0 forKey:@"glowSize"];
+    [defaults setDouble:0.6 forKey:@"glowDuration"];
+    [defaults setDouble:0.8 forKey:@"glowOpacity"];
+    [defaults synchronize];
+    CFPreferencesAppSynchronize((__bridge CFStringRef)kSuite);
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
 }
 
