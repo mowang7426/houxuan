@@ -4,6 +4,20 @@
 static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
 static CFStringRef const kKBGlowDarwinNotification = CFSTR("com.mowang.kbglow.settingsChanged");
 
+static id KBGlowCopyPreference(NSString *key) {
+    return (__bridge_transfer id)CFPreferencesCopyAppValue((__bridge CFStringRef)key, CFSTR("com.mowang.kbglow"));
+}
+
+static BOOL KBGlowBoolPreference(NSString *key, BOOL fallback) {
+    id value = KBGlowCopyPreference(key);
+    return value ? [value boolValue] : fallback;
+}
+
+static double KBGlowDoublePreference(NSString *key, double fallback) {
+    id value = KBGlowCopyPreference(key);
+    return value ? [value doubleValue] : fallback;
+}
+
 static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
                                        void *observer,
                                        CFStringRef name,
@@ -53,54 +67,53 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 }
 
 - (void)reloadSettings {
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kKBGlowDomain];
+    // 使用 CFPreferences 直接读取 app domain，确保设置面板进程和键盘扩展进程共享同一份配置。
+    self.enabled = KBGlowBoolPreference(@"enabled", YES);
 
-    self.enabled = [defaults objectForKey:@"enabled"] ? [defaults boolForKey:@"enabled"] : YES;
-
-    // 动画：设置页始终保证只有一个模式有效。
-    if ([defaults boolForKey:@"animParticle"]) {
+    // 保持 v1.0.3 原有动画选择逻辑，只修复跨进程读取。
+    if (KBGlowBoolPreference(@"animParticle", NO)) {
         self.animationType = KBGlowAnimationTypeParticle;
-    } else if ([defaults boolForKey:@"animGlow"]) {
+    } else if (KBGlowBoolPreference(@"animGlow", NO)) {
         self.animationType = KBGlowAnimationTypeGlow;
     } else {
         self.animationType = KBGlowAnimationTypeRipple;
     }
 
-    self.glowSize = [defaults objectForKey:@"glowSize"] ? [defaults doubleForKey:@"glowSize"] : 60.0;
-    self.glowDuration = [defaults objectForKey:@"glowDuration"] ? [defaults doubleForKey:@"glowDuration"] : 0.6;
-    self.glowOpacity = [defaults objectForKey:@"glowOpacity"] ? [defaults doubleForKey:@"glowOpacity"] : 0.8;
-    self.followFinger = [defaults objectForKey:@"followFinger"] ? [defaults boolForKey:@"followFinger"] : YES;
-    self.wechatEnabled = [defaults objectForKey:@"wechatEnabled"] ? [defaults boolForKey:@"wechatEnabled"] : YES;
-    self.baiduEnabled = [defaults objectForKey:@"baiduEnabled"] ? [defaults boolForKey:@"baiduEnabled"] : YES;
-    self.sogouEnabled = [defaults objectForKey:@"sogouEnabled"] ? [defaults boolForKey:@"sogouEnabled"] : YES;
+    self.glowSize = KBGlowDoublePreference(@"glowSize", 60.0);
+    self.glowDuration = KBGlowDoublePreference(@"glowDuration", 0.6);
+    self.glowOpacity = KBGlowDoublePreference(@"glowOpacity", 0.8);
+    self.followFinger = KBGlowBoolPreference(@"followFinger", YES);
+    self.wechatEnabled = KBGlowBoolPreference(@"wechatEnabled", YES);
+    self.baiduEnabled = KBGlowBoolPreference(@"baiduEnabled", YES);
+    self.sogouEnabled = KBGlowBoolPreference(@"sogouEnabled", YES);
 
-    // 自定义颜色只有在明确存在 customColor 时才优先；选择预设颜色时会清掉它。
-    NSArray *custom = [defaults objectForKey:@"customColor"];
+    NSArray *custom = KBGlowCopyPreference(@"customColor");
     if ([custom isKindOfClass:[NSArray class]] && custom.count >= 3) {
         self.glowColor = [UIColor colorWithRed:[custom[0] doubleValue]
                                          green:[custom[1] doubleValue]
                                           blue:[custom[2] doubleValue]
                                          alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
-    } else if ([defaults boolForKey:@"colorGreen"]) {
+    } else if (KBGlowBoolPreference(@"colorGreen", YES)) {
         self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-    } else if ([defaults boolForKey:@"colorWhite"]) {
+    } else if (KBGlowBoolPreference(@"colorWhite", NO)) {
         self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
-    } else if ([defaults boolForKey:@"colorPink"]) {
+    } else if (KBGlowBoolPreference(@"colorPink", NO)) {
         self.glowColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0];
-    } else if ([defaults boolForKey:@"colorCyan"]) {
+    } else if (KBGlowBoolPreference(@"colorCyan", NO)) {
         self.glowColor = [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0];
-    } else if ([defaults boolForKey:@"colorOrange"]) {
+    } else if (KBGlowBoolPreference(@"colorOrange", NO)) {
         self.glowColor = [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0];
-    } else if ([defaults boolForKey:@"colorPurple"]) {
+    } else if (KBGlowBoolPreference(@"colorPurple", NO)) {
         self.glowColor = [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0];
-    } else if ([defaults boolForKey:@"colorRed"]) {
+    } else if (KBGlowBoolPreference(@"colorRed", NO)) {
         self.glowColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0];
-    } else if ([defaults boolForKey:@"colorBlue"]) {
+    } else if (KBGlowBoolPreference(@"colorBlue", NO)) {
         self.glowColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
     } else {
         self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
     }
 }
+
 - (BOOL)isCurrentKeyboardEnabled {
     if (!self.enabled) return NO;
     NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
@@ -114,12 +127,6 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
     }
     if ([lower containsString:@"sogou"] || [lower containsString:@"sohu"]) {
         return self.sogouEnabled;
-    }
-    // 部分版本的第三方输入法使用不同的 extension bundle id。
-    // 不误伤系统键盘：只有明显属于 keyboard/input extension 的进程才允许。
-    if ([lower containsString:@"keyboard"] || [lower containsString:@"inputmethod"] ||
-        [lower containsString:@"inputextension"] || [lower containsString:@"ime"]) {
-        return YES;
     }
     return NO;
 }
@@ -164,10 +171,6 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 }
 
 - (void)triggerGlowInView:(UIView *)view atPoint:(CGPoint)point {
-    // 设置页与键盘进程属于不同进程。Darwin 通知理论上会刷新，但为了避免
-    // cfprefsd 缓存/通知丢失导致“设置改了但仍用旧配置”，每次按键前重新读取一次。
-    // 这只读取少量 NSUserDefaults，不改变光效实现本身。
-    [self reloadSettings];
     if (!self.enabled || !view || ![self isCurrentKeyboardEnabled]) return;
 
     UIView *keyView = [self findKeyViewFromView:view];
