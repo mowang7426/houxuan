@@ -1,26 +1,8 @@
 #import "KBGlowManager.h"
 #import <objc/runtime.h>
 
-static CFStringRef const kKBGlowAppID = CFSTR("com.mowang.kbglow");
+static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
 static CFStringRef const kKBGlowDarwinNotification = CFSTR("com.mowang.kbglow.settingsChanged");
-
-static id KBGlowPrefsGet(NSString *key) {
-    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)key, kKBGlowAppID);
-    if (value) return (__bridge_transfer id)value;
-    return nil;
-}
-
-static BOOL KBGlowPrefsGetBool(NSString *key, BOOL def) {
-    Boolean exists = false;
-    Boolean value = CFPreferencesGetAppBooleanValue((__bridge CFStringRef)key, kKBGlowAppID, &exists);
-    return exists ? (BOOL)value : def;
-}
-
-static double KBGlowPrefsGetDouble(NSString *key, double def) {
-    id value = KBGlowPrefsGet(key);
-    if ([value isKindOfClass:[NSNumber class]]) return [value doubleValue];
-    return def;
-}
 
 static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
                                        void *observer,
@@ -48,6 +30,10 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 - (instancetype)init {
     self = [super init];
     if (self) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(reloadSettings)
+                                                     name:NSUserDefaultsDidChangeNotification
+                                                   object:nil];
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                          (__bridge const void *)(self),
                                          KBGlowDarwinSettingsChanged,
@@ -59,6 +45,7 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 }
 
 - (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(),
                                         (__bridge const void *)(self),
                                         kKBGlowDarwinNotification,
@@ -66,48 +53,57 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 }
 
 - (void)reloadSettings {
-    self.enabled = KBGlowPrefsGetBool(@"enabled", YES);
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kKBGlowDomain];
+    if (!defaults) return;
 
-    if (KBGlowPrefsGetBool(@"animParticle", NO)) {
-        self.animationType = KBGlowAnimationTypeParticle;
-    } else if (KBGlowPrefsGetBool(@"animGlow", NO)) {
-        self.animationType = KBGlowAnimationTypeGlow;
-    } else {
-        self.animationType = KBGlowAnimationTypeRipple;
+    self.enabled = [defaults objectForKey:@"enabled"] ? [defaults boolForKey:@"enabled"] : YES;
+    self.glowSize = [defaults objectForKey:@"glowSize"] ? [defaults doubleForKey:@"glowSize"] : 60.0;
+    self.glowDuration = [defaults objectForKey:@"glowDuration"] ? [defaults doubleForKey:@"glowDuration"] : 0.6;
+    self.glowOpacity = [defaults objectForKey:@"glowOpacity"] ? [defaults doubleForKey:@"glowOpacity"] : 0.8;
+    self.followFinger = [defaults objectForKey:@"followFinger"] ? [defaults boolForKey:@"followFinger"] : YES;
+    self.wechatEnabled = [defaults objectForKey:@"wechatEnabled"] ? [defaults boolForKey:@"wechatEnabled"] : YES;
+    self.baiduEnabled = [defaults objectForKey:@"baiduEnabled"] ? [defaults boolForKey:@"baiduEnabled"] : YES;
+    self.sogouEnabled = [defaults objectForKey:@"sogouEnabled"] ? [defaults boolForKey:@"sogouEnabled"] : YES;
+
+    // 单一动画状态源：animationType，同时兼容旧版三个 bool。
+    NSInteger type = [defaults objectForKey:@"animationType"] ? [defaults integerForKey:@"animationType"] : -1;
+    if (type < 0 || type > 2) {
+        if ([defaults boolForKey:@"animParticle"]) type = KBGlowAnimationTypeParticle;
+        else if ([defaults boolForKey:@"animGlow"]) type = KBGlowAnimationTypeGlow;
+        else type = KBGlowAnimationTypeRipple;
     }
+    self.animationType = (KBGlowAnimationType)type;
 
-    self.glowSize = KBGlowPrefsGetDouble(@"glowSize", 60.0);
-    self.glowDuration = KBGlowPrefsGetDouble(@"glowDuration", 0.6);
-    self.glowOpacity = KBGlowPrefsGetDouble(@"glowOpacity", 0.8);
-    self.followFinger = KBGlowPrefsGetBool(@"followFinger", YES);
-    self.wechatEnabled = KBGlowPrefsGetBool(@"wechatEnabled", YES);
-    self.baiduEnabled = KBGlowPrefsGetBool(@"baiduEnabled", YES);
-    self.sogouEnabled = KBGlowPrefsGetBool(@"sogouEnabled", YES);
-
-    NSArray *custom = KBGlowPrefsGet(@"customColor");
+    NSArray *custom = [defaults objectForKey:@"customColor"];
     if ([custom isKindOfClass:[NSArray class]] && custom.count >= 3) {
-        self.glowColor = [UIColor colorWithRed:[custom[0] doubleValue]
-                                         green:[custom[1] doubleValue]
-                                          blue:[custom[2] doubleValue]
-                                         alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
-    } else if (KBGlowPrefsGetBool(@"colorGreen", NO)) {
-        self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-    } else if (KBGlowPrefsGetBool(@"colorWhite", NO)) {
-        self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
-    } else if (KBGlowPrefsGetBool(@"colorPink", NO)) {
-        self.glowColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0];
-    } else if (KBGlowPrefsGetBool(@"colorCyan", NO)) {
-        self.glowColor = [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0];
-    } else if (KBGlowPrefsGetBool(@"colorOrange", NO)) {
-        self.glowColor = [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0];
-    } else if (KBGlowPrefsGetBool(@"colorPurple", NO)) {
-        self.glowColor = [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0];
-    } else if (KBGlowPrefsGetBool(@"colorRed", NO)) {
-        self.glowColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0];
-    } else if (KBGlowPrefsGetBool(@"colorBlue", NO)) {
-        self.glowColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
+        CGFloat r = MAX(0.0, MIN(1.0, [custom[0] doubleValue]));
+        CGFloat g = MAX(0.0, MIN(1.0, [custom[1] doubleValue]));
+        CGFloat b = MAX(0.0, MIN(1.0, [custom[2] doubleValue]));
+        CGFloat a = custom.count >= 4 ? MAX(0.0, MIN(1.0, [custom[3] doubleValue])) : 1.0;
+        self.glowColor = [UIColor colorWithRed:r green:g blue:b alpha:a];
     } else {
-        self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+        NSString *colorType = [defaults stringForKey:@"colorType"];
+        if (!colorType) {
+            if ([defaults boolForKey:@"colorBlue"]) colorType = @"colorBlue";
+            else if ([defaults boolForKey:@"colorRed"]) colorType = @"colorRed";
+            else if ([defaults boolForKey:@"colorPurple"]) colorType = @"colorPurple";
+            else if ([defaults boolForKey:@"colorOrange"]) colorType = @"colorOrange";
+            else if ([defaults boolForKey:@"colorCyan"]) colorType = @"colorCyan";
+            else if ([defaults boolForKey:@"colorPink"]) colorType = @"colorPink";
+            else if ([defaults boolForKey:@"colorWhite"]) colorType = @"colorWhite";
+            else colorType = @"colorGreen";
+        }
+        NSDictionary *colors = @{
+            @"colorGreen": [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0],
+            @"colorWhite": [UIColor colorWithWhite:1.0 alpha:1.0],
+            @"colorPink": [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0],
+            @"colorCyan": [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0],
+            @"colorOrange": [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0],
+            @"colorPurple": [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0],
+            @"colorRed": [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0],
+            @"colorBlue": [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0]
+        };
+        self.glowColor = colors[colorType] ?: colors[@"colorGreen"];
     }
 }
 
@@ -169,10 +165,12 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 
 - (void)triggerGlowInView:(UIView *)view atPoint:(CGPoint)point {
     if (!self.enabled || !view || ![self isCurrentKeyboardEnabled]) return;
+
     UIView *keyView = [self findKeyViewFromView:view];
     if (!keyView) keyView = view;
     UIView *container = keyView.superview ?: keyView;
     if (!container) return;
+
     CGPoint convertedPoint;
     if (self.followFinger) {
         convertedPoint = [view convertPoint:point toView:container];
@@ -180,6 +178,7 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
         convertedPoint = [keyView convertPoint:CGPointMake(CGRectGetMidX(keyView.bounds), CGRectGetMidY(keyView.bounds))
                                        toView:container];
     }
+
     KBGlowView *glowView = [[KBGlowView alloc] initWithFrame:container.bounds];
     glowView.glowColor = self.glowColor ?: [UIColor colorWithRed:0 green:1 blue:0 alpha:1];
     glowView.glowSize = self.glowSize;
