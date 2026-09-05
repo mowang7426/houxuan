@@ -8,35 +8,6 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 
 @implementation RootListController
 
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    if ([defaults objectForKey:@"enabled"] == nil) [defaults setBool:YES forKey:@"enabled"];
-    if ([defaults objectForKey:@"wechatEnabled"] == nil) [defaults setBool:YES forKey:@"wechatEnabled"];
-    if ([defaults objectForKey:@"baiduEnabled"] == nil) [defaults setBool:YES forKey:@"baiduEnabled"];
-    if ([defaults objectForKey:@"sogouEnabled"] == nil) [defaults setBool:YES forKey:@"sogouEnabled"];
-    if ([defaults objectForKey:@"followFinger"] == nil) [defaults setBool:YES forKey:@"followFinger"];
-    if ([defaults objectForKey:@"glowSize"] == nil) [defaults setDouble:60.0 forKey:@"glowSize"];
-    if ([defaults objectForKey:@"glowDuration"] == nil) [defaults setDouble:0.6 forKey:@"glowDuration"];
-    if ([defaults objectForKey:@"glowOpacity"] == nil) [defaults setDouble:0.8 forKey:@"glowOpacity"];
-    if ([defaults objectForKey:@"animRipple"] == nil && [defaults objectForKey:@"animGlow"] == nil && [defaults objectForKey:@"animParticle"] == nil) {
-        [defaults setBool:YES forKey:@"animRipple"];
-        [defaults setBool:NO forKey:@"animGlow"];
-        [defaults setBool:NO forKey:@"animParticle"];
-    }
-    if ([defaults objectForKey:@"colorGreen"] == nil) {
-        [defaults setBool:YES forKey:@"colorGreen"];
-        [defaults setBool:NO forKey:@"colorBlue"];
-        [defaults setBool:NO forKey:@"colorRed"];
-        [defaults setBool:NO forKey:@"colorPurple"];
-        [defaults setBool:NO forKey:@"colorOrange"];
-        [defaults setBool:NO forKey:@"colorCyan"];
-        [defaults setBool:NO forKey:@"colorPink"];
-        [defaults setBool:NO forKey:@"colorWhite"];
-    }
-    [defaults synchronize];
-}
-
 - (NSArray *)specifiers {
     if (_specifiers == nil) {
         NSMutableArray *specs = [NSMutableArray array];
@@ -71,7 +42,7 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
         [specs addObject:resetBtn];
 
         [specs addObject:[self groupSpecifierWithName:@"关于"]];
-        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.5"
+        [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"KBGlow v1.0.4"
                                                          target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
         [specs addObject:[PSSpecifier preferenceSpecifierNamed:@"作者: MoWang"
                                                          target:nil set:nil get:nil detail:nil cell:PSStaticTextCell edit:nil]];
@@ -109,31 +80,26 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key) return;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    [defaults setObject:value forKey:key];
-    [defaults synchronize];
-    CFPreferencesSynchronize((__bridge CFStringRef)kSuite, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)value, CFSTR("com.mowang.kbglow"));
+    CFPreferencesAppSynchronize(CFSTR("com.mowang.kbglow"));
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
 }
 
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key) return nil;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    id value = [defaults objectForKey:key];
+    id value = (__bridge_transfer id)CFPreferencesCopyAppValue((__bridge CFStringRef)key, CFSTR("com.mowang.kbglow"));
     return value ?: [specifier propertyForKey:@"default"];
 }
 
 - (void)resetSettings:(PSSpecifier *)specifier {
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     NSArray *keys = @[@"enabled", @"animRipple", @"animGlow", @"animParticle", @"animationType",
                       @"glowColor", @"colorGreen", @"colorWhite", @"colorPink", @"colorCyan", @"colorOrange",
                       @"colorPurple", @"colorRed", @"colorBlue", @"customColor", @"glowSize",
                       @"glowDuration", @"glowOpacity", @"followFinger", @"wechatEnabled",
                       @"baiduEnabled", @"sogouEnabled", @"customR", @"customG", @"customB"];
-    for (NSString *key in keys) [defaults removeObjectForKey:key];
-    [defaults synchronize];
-    CFPreferencesSynchronize((__bridge CFStringRef)kSuite, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    for (NSString *key in keys) CFPreferencesSetAppValue((__bridge CFStringRef)key, NULL, CFSTR("com.mowang.kbglow"));
+    CFPreferencesAppSynchronize(CFSTR("com.mowang.kbglow"));
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
 }

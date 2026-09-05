@@ -38,12 +38,10 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
     if (![value boolValue]) return;
     NSString *selected = [specifier propertyForKey:@"animationKey"];
     if (!selected) return;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     for (NSString *key in @[@"animRipple", @"animGlow", @"animParticle"]) {
-        [defaults setBool:[key isEqualToString:selected] forKey:key];
+        CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)@([key isEqualToString:selected]), CFSTR("com.mowang.kbglow"));
     }
-    [defaults synchronize];
-    CFPreferencesSynchronize((__bridge CFStringRef)kSuite, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    CFPreferencesAppSynchronize(CFSTR("com.mowang.kbglow"));
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
 }
@@ -51,8 +49,8 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 - (id)readAnimationValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"animationKey"];
     if (!key) return @NO;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    if ([defaults objectForKey:key]) return @([defaults boolForKey:key]);
+    id value = (__bridge_transfer id)CFPreferencesCopyAppValue((__bridge CFStringRef)key, CFSTR("com.mowang.kbglow"));
+    if (value) return @([value boolValue]);
     return [key isEqualToString:@"animRipple"] ? @YES : @NO;
 }
 
