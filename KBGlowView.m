@@ -5,7 +5,7 @@
 - (void)startTrackingAtPoint:(CGPoint)p {
     [_glow removeFromSuperlayer]; CGFloat s=MAX(12,_glowSize*2); _glow=[CAGradientLayer layer]; _glow.frame=CGRectMake(0,0,s,s); _glow.position=p; _glow.type=kCAGradientLayerRadial; _glow.startPoint=CGPointMake(.5,.5); _glow.endPoint=CGPointMake(1,1); _glow.cornerRadius=s/2;
     UIColor *c=self.glowColor?:UIColor.systemBlueColor; CGFloat a=MIN(1,MAX(.05,self.glowOpacity)); _glow.colors=@[(id)[c colorWithAlphaComponent:a].CGColor,(id)[c colorWithAlphaComponent:a*.32].CGColor,(id)UIColor.clearColor.CGColor]; _glow.locations=@[@0,@.42,@1]; [self.layer addSublayer:_glow]; _tracking=YES;
-    if(self.animationType==KBGlowAnimationTypeGlow){ CABasicAnimation *pulse=[CABasicAnimation animationWithKeyPath:@"opacity"]; pulse.fromValue=@(a*.55); pulse.toValue=@a; pulse.autoreverses=YES; pulse.duration=MAX(.12,self.glowDuration*.5); [_glow addAnimation:pulse forKey:@"pulse"]; }
+    if(self.animationType==KBGlowAnimationTypeGlow){ CABasicAnimation *pulse=[CABasicAnimation animationWithKeyPath:@"opacity"]; pulse.fromValue=@(a*.55); pulse.toValue=@(a); pulse.autoreverses=YES; pulse.duration=MAX(.12,self.glowDuration*.5); [_glow addAnimation:pulse forKey:@"pulse"]; }
     else { _glow.opacity=a; CABasicAnimation *in=[CABasicAnimation animationWithKeyPath:@"transform.scale"]; in.fromValue=@.55; in.toValue=@1; in.duration=.08; in.timingFunction=[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]; [_glow addAnimation:in forKey:@"pressIn"]; }
 }
 - (void)updateTrackingPoint:(CGPoint)p { if(!_tracking||!_glow)return; [CATransaction begin]; [CATransaction setDisableActions:YES]; _glow.position=p; [CATransaction commit]; }
