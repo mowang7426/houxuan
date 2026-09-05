@@ -1,8 +1,26 @@
 #import "KBGlowManager.h"
-#import "KBGlowSettings.h"
 #import <objc/runtime.h>
 
+static CFStringRef const kKBGlowAppID = CFSTR("com.mowang.kbglow");
 static CFStringRef const kKBGlowDarwinNotification = CFSTR("com.mowang.kbglow.settingsChanged");
+
+static id KBGlowPrefsGet(NSString *key) {
+    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)key, kKBGlowAppID);
+    if (value) return (__bridge_transfer id)value;
+    return nil;
+}
+
+static BOOL KBGlowPrefsGetBool(NSString *key, BOOL def) {
+    Boolean exists = false;
+    Boolean value = CFPreferencesGetAppBooleanValue((__bridge CFStringRef)key, kKBGlowAppID, &exists);
+    return exists ? (BOOL)value : def;
+}
+
+static double KBGlowPrefsGetDouble(NSString *key, double def) {
+    id value = KBGlowPrefsGet(key);
+    if ([value isKindOfClass:[NSNumber class]]) return [value doubleValue];
+    return def;
+}
 
 static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
                                        void *observer,
@@ -48,61 +66,47 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 }
 
 - (void)reloadSettings {
-    @try {
-        self.enabled = [KBGlowSettings boolForKey:@"enabled" default:YES];
+    self.enabled = KBGlowPrefsGetBool(@"enabled", YES);
 
-        if ([KBGlowSettings boolForKey:@"animParticle" default:NO]) {
-            self.animationType = KBGlowAnimationTypeParticle;
-        } else if ([KBGlowSettings boolForKey:@"animGlow" default:NO]) {
-            self.animationType = KBGlowAnimationTypeGlow;
-        } else {
-            self.animationType = KBGlowAnimationTypeRipple;
-        }
-
-        self.glowSize = [KBGlowSettings doubleForKey:@"glowSize" default:60.0];
-        self.glowDuration = [KBGlowSettings doubleForKey:@"glowDuration" default:0.6];
-        self.glowOpacity = [KBGlowSettings doubleForKey:@"glowOpacity" default:0.8];
-        self.followFinger = [KBGlowSettings boolForKey:@"followFinger" default:YES];
-        self.wechatEnabled = [KBGlowSettings boolForKey:@"wechatEnabled" default:YES];
-        self.baiduEnabled = [KBGlowSettings boolForKey:@"baiduEnabled" default:YES];
-        self.sogouEnabled = [KBGlowSettings boolForKey:@"sogouEnabled" default:YES];
-
-        NSArray *custom = [KBGlowSettings objectForKey:@"customColor"];
-        if ([custom isKindOfClass:[NSArray class]] && custom.count >= 3) {
-            self.glowColor = [UIColor colorWithRed:[custom[0] doubleValue]
-                                             green:[custom[1] doubleValue]
-                                              blue:[custom[2] doubleValue]
-                                             alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
-        } else if ([KBGlowSettings boolForKey:@"colorGreen" default:NO]) {
-            self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-        } else if ([KBGlowSettings boolForKey:@"colorWhite" default:NO]) {
-            self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
-        } else if ([KBGlowSettings boolForKey:@"colorPink" default:NO]) {
-            self.glowColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0];
-        } else if ([KBGlowSettings boolForKey:@"colorCyan" default:NO]) {
-            self.glowColor = [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0];
-        } else if ([KBGlowSettings boolForKey:@"colorOrange" default:NO]) {
-            self.glowColor = [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0];
-        } else if ([KBGlowSettings boolForKey:@"colorPurple" default:NO]) {
-            self.glowColor = [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0];
-        } else if ([KBGlowSettings boolForKey:@"colorRed" default:NO]) {
-            self.glowColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0];
-        } else if ([KBGlowSettings boolForKey:@"colorBlue" default:NO]) {
-            self.glowColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
-        } else {
-            self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-        }
-    } @catch (NSException *e) {
-        // 配置读取失败时用默认值，确保光效不会消失
-        self.enabled = YES;
+    if (KBGlowPrefsGetBool(@"animParticle", NO)) {
+        self.animationType = KBGlowAnimationTypeParticle;
+    } else if (KBGlowPrefsGetBool(@"animGlow", NO)) {
+        self.animationType = KBGlowAnimationTypeGlow;
+    } else {
         self.animationType = KBGlowAnimationTypeRipple;
-        self.glowSize = 60.0;
-        self.glowDuration = 0.6;
-        self.glowOpacity = 0.8;
-        self.followFinger = YES;
-        self.wechatEnabled = YES;
-        self.baiduEnabled = YES;
-        self.sogouEnabled = YES;
+    }
+
+    self.glowSize = KBGlowPrefsGetDouble(@"glowSize", 60.0);
+    self.glowDuration = KBGlowPrefsGetDouble(@"glowDuration", 0.6);
+    self.glowOpacity = KBGlowPrefsGetDouble(@"glowOpacity", 0.8);
+    self.followFinger = KBGlowPrefsGetBool(@"followFinger", YES);
+    self.wechatEnabled = KBGlowPrefsGetBool(@"wechatEnabled", YES);
+    self.baiduEnabled = KBGlowPrefsGetBool(@"baiduEnabled", YES);
+    self.sogouEnabled = KBGlowPrefsGetBool(@"sogouEnabled", YES);
+
+    NSArray *custom = KBGlowPrefsGet(@"customColor");
+    if ([custom isKindOfClass:[NSArray class]] && custom.count >= 3) {
+        self.glowColor = [UIColor colorWithRed:[custom[0] doubleValue]
+                                         green:[custom[1] doubleValue]
+                                          blue:[custom[2] doubleValue]
+                                         alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
+    } else if (KBGlowPrefsGetBool(@"colorGreen", NO)) {
+        self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+    } else if (KBGlowPrefsGetBool(@"colorWhite", NO)) {
+        self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
+    } else if (KBGlowPrefsGetBool(@"colorPink", NO)) {
+        self.glowColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0];
+    } else if (KBGlowPrefsGetBool(@"colorCyan", NO)) {
+        self.glowColor = [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0];
+    } else if (KBGlowPrefsGetBool(@"colorOrange", NO)) {
+        self.glowColor = [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0];
+    } else if (KBGlowPrefsGetBool(@"colorPurple", NO)) {
+        self.glowColor = [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0];
+    } else if (KBGlowPrefsGetBool(@"colorRed", NO)) {
+        self.glowColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0];
+    } else if (KBGlowPrefsGetBool(@"colorBlue", NO)) {
+        self.glowColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
+    } else {
         self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
     }
 }
@@ -112,7 +116,7 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
     NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
     if (!bundleID) return NO;
     NSString *lower = [bundleID lowercaseString];
-    if ([lower containsString:@"wechat"] || [lower containsString:@"wcinput"] || [lower containsString:@"wetype"]) {
+    if ([lower containsString:@"wechat"] || [lower containsString:@"wcinput"]) {
         return self.wechatEnabled;
     }
     if ([lower containsString:@"baidu"]) {
@@ -188,7 +192,11 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 }
 
 - (void)notifySettingsChanged {
-    [KBGlowSettings notifyChanged];
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                          kKBGlowDarwinNotification,
+                                          NULL,
+                                          NULL,
+                                          true);
 }
 
 @end

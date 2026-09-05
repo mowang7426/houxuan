@@ -4,12 +4,12 @@ TARGET = iphone:clang::15.0
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = KBGlow
-KBGlow_FILES = Tweak.xm KBGlowManager.m KBGlowView.m KBGlowSettings.m
+KBGlow_FILES = Tweak.xm KBGlowManager.m KBGlowView.m
 KBGlow_CFLAGS = -fobjc-arc
 KBGlow_FRAMEWORKS = UIKit QuartzCore
 
 BUNDLE_NAME = KBGlowPrefs
-KBGlowPrefs_FILES = KBGlowPrefs/RootListController.m KBGlowPrefs/ColorPickerController.m KBGlowPrefs/AnimationPickerController.m KBGlowSettings.m
+KBGlowPrefs_FILES = KBGlowPrefs/RootListController.m KBGlowPrefs/ColorPickerController.m KBGlowPrefs/AnimationPickerController.m
 KBGlowPrefs_INSTALL_PATH = /Library/PreferenceBundles
 KBGlowPrefs_FRAMEWORKS = UIKit
 KBGlowPrefs_CFLAGS = -fobjc-arc
