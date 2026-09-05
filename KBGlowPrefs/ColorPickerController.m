@@ -1,8 +1,39 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import "ColorPickerController.h"
 
-static NSString *const kSuite = @"com.mowang.kbglow";
+static CFStringRef const kAppID = CFSTR("com.mowang.kbglow");
 static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
+
+static void KBGlowPrefsSet(NSString *key, id value) {
+    CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)value, kAppID);
+}
+
+static id KBGlowPrefsGet(NSString *key) {
+    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)key, kAppID);
+    if (value) return (__bridge_transfer id)value;
+    return nil;
+}
+
+static void KBGlowPrefsSetBool(NSString *key, BOOL value) {
+    CFPreferencesSetAppValue((__bridge CFStringRef)key, value ? kCFBooleanTrue : kCFBooleanFalse, kAppID);
+}
+
+static BOOL KBGlowPrefsGetBool(NSString *key, BOOL def) {
+    Boolean exists = false;
+    Boolean value = CFPreferencesGetAppBooleanValue((__bridge CFStringRef)key, kAppID, &exists);
+    return exists ? (BOOL)value : def;
+}
+
+static double KBGlowPrefsGetDouble(NSString *key, double def) {
+    id value = KBGlowPrefsGet(key);
+    if ([value isKindOfClass:[NSNumber class]]) return [value doubleValue];
+    return def;
+}
+
+static void KBGlowPrefsSyncAndNotify(void) {
+    CFPreferencesAppSynchronize(kAppID);
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
+}
 
 @implementation ColorPickerController
 
@@ -30,7 +61,6 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
             [spec setProperty:@NO forKey:@"default"];
             [specs addObject:spec];
         }
-
         [specs addObject:[self groupSpecifierWithName:@"自定义颜色"]];
         [specs addObject:[self sliderSpecifierWithName:@"红色 R" key:@"customR" min:0 max:1 default:0]];
         [specs addObject:[self sliderSpecifierWithName:@"绿色 G" key:@"customG" min:0 max:1 default:1]];
@@ -64,12 +94,10 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
     if (![value respondsToSelector:@selector(boolValue)] || ![value boolValue]) return;
     NSString *selected = [specifier propertyForKey:@"colorKey"];
     if (!selected) return;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     NSArray *keys = @[@"colorGreen", @"colorBlue", @"colorRed", @"colorPurple", @"colorOrange", @"colorCyan", @"colorPink", @"colorWhite"];
-    for (NSString *key in keys) [defaults setBool:[key isEqualToString:selected] forKey:key];
-    [defaults removeObjectForKey:@"customColor"];
-    [defaults synchronize];
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
+    for (NSString *key in keys) KBGlowPrefsSetBool(key, [key isEqualToString:selected]);
+    CFPreferencesSetAppValue(CFSTR("customColor"), NULL, kAppID);
+    KBGlowPrefsSyncAndNotify();
     [self reloadSpecifiers];
     [self showToast:@"颜色已应用"];
 }
@@ -77,37 +105,32 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 - (id)readPresetValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"colorKey"];
     if (!key) return @NO;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    if ([defaults objectForKey:key]) return @([defaults boolForKey:key]);
+    if (KBGlowPrefsGetBool(key, NO)) return @YES;
     return [key isEqualToString:@"colorGreen"] ? @YES : @NO;
 }
 
 - (void)setCustomValue:(id)value specifier:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key) return;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    [defaults setObject:value forKey:key];
-    [defaults synchronize];
+    KBGlowPrefsSet(key, value);
+    CFPreferencesAppSynchronize(kAppID);
 }
 
 - (id)readCustomValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    id value = [defaults objectForKey:key];
+    id value = KBGlowPrefsGet(key);
     return value ?: [specifier propertyForKey:@"default"];
 }
 
 - (void)applyCustomColor:(PSSpecifier *)specifier {
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    CGFloat r = [defaults objectForKey:@"customR"] ? [defaults doubleForKey:@"customR"] : 0.0;
-    CGFloat g = [defaults objectForKey:@"customG"] ? [defaults doubleForKey:@"customG"] : 1.0;
-    CGFloat b = [defaults objectForKey:@"customB"] ? [defaults doubleForKey:@"customB"] : 0.0;
+    CGFloat r = KBGlowPrefsGetDouble(@"customR", 0.0);
+    CGFloat g = KBGlowPrefsGetDouble(@"customG", 1.0);
+    CGFloat b = KBGlowPrefsGetDouble(@"customB", 0.0);
     for (NSString *key in @[@"colorGreen", @"colorBlue", @"colorRed", @"colorPurple", @"colorOrange", @"colorCyan", @"colorPink", @"colorWhite"]) {
-        [defaults setBool:NO forKey:key];
+        KBGlowPrefsSetBool(key, NO);
     }
-    [defaults setObject:@[@(r), @(g), @(b), @1.0] forKey:@"customColor"];
-    [defaults synchronize];
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
+    KBGlowPrefsSet(@"customColor", @[@(r), @(g), @(b), @1.0]);
+    KBGlowPrefsSyncAndNotify();
     [self reloadSpecifiers];
     [self showToast:@"自定义颜色已应用"];
 }

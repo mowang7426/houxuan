@@ -1,8 +1,23 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import "AnimationPickerController.h"
 
-static NSString *const kSuite = @"com.mowang.kbglow";
+static CFStringRef const kAppID = CFSTR("com.mowang.kbglow");
 static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
+
+static void KBGlowPrefsSetBool(NSString *key, BOOL value) {
+    CFPreferencesSetAppValue((__bridge CFStringRef)key, value ? kCFBooleanTrue : kCFBooleanFalse, kAppID);
+}
+
+static BOOL KBGlowPrefsGetBool(NSString *key, BOOL def) {
+    Boolean exists = false;
+    Boolean value = CFPreferencesGetAppBooleanValue((__bridge CFStringRef)key, kAppID, &exists);
+    return exists ? (BOOL)value : def;
+}
+
+static void KBGlowPrefsSyncAndNotify(void) {
+    CFPreferencesAppSynchronize(kAppID);
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
+}
 
 @implementation AnimationPickerController
 
@@ -38,20 +53,17 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
     if (![value boolValue]) return;
     NSString *selected = [specifier propertyForKey:@"animationKey"];
     if (!selected) return;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     for (NSString *key in @[@"animRipple", @"animGlow", @"animParticle"]) {
-        [defaults setBool:[key isEqualToString:selected] forKey:key];
+        KBGlowPrefsSetBool(key, [key isEqualToString:selected]);
     }
-    [defaults synchronize];
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
+    KBGlowPrefsSyncAndNotify();
     [self reloadSpecifiers];
 }
 
 - (id)readAnimationValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"animationKey"];
     if (!key) return @NO;
-    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    if ([defaults objectForKey:key]) return @([defaults boolForKey:key]);
+    if (KBGlowPrefsGetBool(key, NO)) return @YES;
     return [key isEqualToString:@"animRipple"] ? @YES : @NO;
 }
 
