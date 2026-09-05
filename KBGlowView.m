@@ -1,39 +1,21 @@
 #import "KBGlowView.h"
 #import <QuartzCore/QuartzCore.h>
-#import <math.h>
-
-@implementation KBGlowView
-
-- (instancetype)initWithFrame:(CGRect)frame { if ((self=[super initWithFrame:frame])) { self.userInteractionEnabled=NO; self.backgroundColor=UIColor.clearColor; _glowSize=55; _glowDuration=.45; _glowOpacity=.75; _animationType=KBGlowAnimationTypeRipple; } return self; }
-- (void)startAnimationAtPoint:(CGPoint)p {
-    self.layer.sublayers=nil;
-    CGFloat s=MAX(12,self.glowSize*2);
-    CAGradientLayer *g=[CAGradientLayer layer]; g.frame=CGRectMake(0,0,s,s); g.position=p; g.type=kCAGradientLayerRadial; g.startPoint=CGPointMake(.5,.5); g.endPoint=CGPointMake(1,1); g.cornerRadius=s/2;
-    UIColor *c=self.glowColor ?: UIColor.systemBlueColor; CGFloat a=MIN(1,MAX(.05,self.glowOpacity));
-    g.colors=@[(id)[c colorWithAlphaComponent:a].CGColor,(id)[c colorWithAlphaComponent:a*.35].CGColor,(id)UIColor.clearColor.CGColor]; g.locations=@[@0,@.45,@1];
-    [self.layer addSublayer:g];
-    if (self.animationType==KBGlowAnimationTypeGlow) {
-        g.opacity=1; CABasicAnimation *pulse=[CABasicAnimation animationWithKeyPath:@"opacity"]; pulse.fromValue=@(a*.25); pulse.toValue=@(a); pulse.autoreverses=YES; pulse.repeatCount=1; pulse.duration=MAX(.12,self.glowDuration*.5); [g addAnimation:pulse forKey:@"pulse"];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)(MAX(.25,self.glowDuration)*NSEC_PER_SEC)),dispatch_get_main_queue(),^{ [self removeFromSuperview]; });
-    } else {
-        CABasicAnimation *scale=[CABasicAnimation animationWithKeyPath:@"transform.scale"]; scale.fromValue=@.25; scale.toValue=(self.animationType==KBGlowAnimationTypeParticle)?@1.15:@1.65;
-        CABasicAnimation *fade=[CABasicAnimation animationWithKeyPath:@"opacity"]; fade.fromValue=@(a); fade.toValue=@0;
-        CAAnimationGroup *grp=[CAAnimationGroup animation]; grp.animations=@[scale,fade]; grp.duration=MAX(.12,self.glowDuration); grp.timingFunction=[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]; grp.delegate=self; [g addAnimation:grp forKey:@"glow"];
-    }
+@implementation KBGlowView { CAGradientLayer *_glow; BOOL _tracking; }
+- (instancetype)initWithFrame:(CGRect)f { if((self=[super initWithFrame:f])){ self.userInteractionEnabled=NO; self.backgroundColor=UIColor.clearColor; _glowSize=55; _glowDuration=.45; _glowOpacity=.75; _animationType=KBGlowAnimationTypeRipple; } return self; }
+- (void)startTrackingAtPoint:(CGPoint)p {
+    [_glow removeFromSuperlayer]; CGFloat s=MAX(12,_glowSize*2); _glow=[CAGradientLayer layer]; _glow.frame=CGRectMake(0,0,s,s); _glow.position=p; _glow.type=kCAGradientLayerRadial; _glow.startPoint=CGPointMake(.5,.5); _glow.endPoint=CGPointMake(1,1); _glow.cornerRadius=s/2;
+    UIColor *c=self.glowColor?:UIColor.systemBlueColor; CGFloat a=MIN(1,MAX(.05,self.glowOpacity)); _glow.colors=@[(id)[c colorWithAlphaComponent:a].CGColor,(id)[c colorWithAlphaComponent:a*.32].CGColor,(id)UIColor.clearColor.CGColor]; _glow.locations=@[@0,@.42,@1]; [self.layer addSublayer:_glow]; _tracking=YES;
+    if(self.animationType==KBGlowAnimationTypeGlow){ CABasicAnimation *pulse=[CABasicAnimation animationWithKeyPath:@"opacity"]; pulse.fromValue=@(a*.55); pulse.toValue=@a; pulse.autoreverses=YES; pulse.duration=MAX(.12,self.glowDuration*.5); [_glow addAnimation:pulse forKey:@"pulse"]; }
+    else { _glow.opacity=a; CABasicAnimation *in=[CABasicAnimation animationWithKeyPath:@"transform.scale"]; in.fromValue=@.55; in.toValue=@1; in.duration=.08; in.timingFunction=[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]; [_glow addAnimation:in forKey:@"pressIn"]; }
 }
-- (void)updateGlowPosition:(CGPoint)point {
-    if (!self.superview) return;
-    for (CALayer *layer in [self.layer.sublayers copy]) {
-        layer.position = point;
-    }
+- (void)updateTrackingPoint:(CGPoint)p { if(!_tracking||!_glow)return; [CATransaction begin]; [CATransaction setDisableActions:YES]; _glow.position=p; [CATransaction commit]; }
+- (void)finishTrackingAtPoint:(CGPoint)p cancelled:(BOOL)cancelled {
+    if(!_glow){ [self removeFromSuperview]; return; } _tracking=NO; if(!cancelled) [self updateTrackingPoint:p];
+    CGFloat a=MIN(1,MAX(.05,self.glowOpacity)); NSTimeInterval d=MAX(.08,self.glowDuration);
+    CABasicAnimation *fade=[CABasicAnimation animationWithKeyPath:@"opacity"]; fade.fromValue=@(_glow.presentationLayer?[(CALayer*)_glow.presentationLayer opacity]:a); fade.toValue=@0; fade.duration=d; fade.timingFunction=[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    CABasicAnimation *scale=[CABasicAnimation animationWithKeyPath:@"transform.scale"]; scale.fromValue=@1; scale.toValue=(self.animationType==KBGlowAnimationTypeParticle?@1.12:@1.42); scale.duration=d; scale.timingFunction=[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    CAAnimationGroup *grp=[CAAnimationGroup animation]; grp.animations=@[fade,scale]; grp.duration=d; grp.delegate=self; [_glow addAnimation:grp forKey:@"finish"];
 }
-
-- (void)finishAtPoint:(CGPoint)point {
-    if (!self.superview) return;
-    [self updateGlowPosition:point];
-}
-
-- (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag { dispatch_async(dispatch_get_main_queue(),^{ [self removeFromSuperview]; }); }
-- (void)stopAnimation { [self removeFromSuperview]; }
-
+- (void)animationDidStop:(CAAnimation*)anim finished:(BOOL)flag { dispatch_async(dispatch_get_main_queue(),^{ [self removeFromSuperview]; }); }
+- (void)stopAnimation { _tracking=NO; [_glow removeAllAnimations]; [self removeFromSuperview]; }
 @end
