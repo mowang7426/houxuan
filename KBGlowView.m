@@ -91,7 +91,7 @@
 - (void)animateGlowAtPoint:(CGPoint)point {
     [self.gradientLayer removeFromSuperlayer];
 
-    CGFloat size = MAX(10.0, self.glowSize * 2.0);
+    CGFloat size = self.glowSize * 2;
     self.gradientLayer = [CAGradientLayer layer];
     self.gradientLayer.frame = CGRectMake(0, 0, size, size);
     self.gradientLayer.position = point;
@@ -99,33 +99,27 @@
     self.gradientLayer.endPoint = CGPointMake(1.0, 1.0);
     self.gradientLayer.type = kCAGradientLayerRadial;
 
-    UIColor *color = self.glowColor ?: [UIColor greenColor];
+    UIColor *color = self.glowColor;
     self.gradientLayer.colors = @[
         (__bridge id)[color colorWithAlphaComponent:self.glowOpacity].CGColor,
         (__bridge id)[color colorWithAlphaComponent:self.glowOpacity * 0.3].CGColor,
         (__bridge id)[UIColor clearColor].CGColor
     ];
     self.gradientLayer.locations = @[@0.0, @0.6, @1.0];
-    self.gradientLayer.cornerRadius = size / 2.0;
+    self.gradientLayer.cornerRadius = size / 2;
     self.gradientLayer.masksToBounds = YES;
-    self.gradientLayer.opacity = 0.0;
+    self.gradientLayer.opacity = 0;
+
     [self.layer addSublayer:self.gradientLayer];
 
-    NSTimeInterval duration = MAX(0.1, self.glowDuration);
-    CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    fade.fromValue = @0.0;
-    fade.toValue = @1.0;
-    fade.duration = MIN(0.12, duration * 0.25);
-    fade.autoreverses = YES;
-    fade.repeatCount = 0;
-    fade.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    fade.removedOnCompletion = YES;
-    [self.gradientLayer addAnimation:fade forKey:@"glowPulse"];
-
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(duration * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        if (!self || !self.superview) return;
-        [self stopAnimation];
-    });
+    // 淡入
+    CABasicAnimation *fadeIn = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    fadeIn.fromValue = @(0);
+    fadeIn.toValue = @(1.0);
+    fadeIn.duration = 0.1;
+    fadeIn.removedOnCompletion = NO;
+    fadeIn.fillMode = kCAFillModeForwards;
+    [self.gradientLayer addAnimation:fadeIn forKey:@"fadeIn"];
 }
 
 - (void)animateParticleAtPoint:(CGPoint)point {
@@ -209,7 +203,6 @@
 }
 
 - (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag {
-    if (!flag) return;
     if (self.animationType != KBGlowAnimationTypeGlow) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self stopAnimation];

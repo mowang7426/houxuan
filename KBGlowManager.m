@@ -54,9 +54,18 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 
 - (void)reloadSettings {
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kKBGlowDomain];
-    if (!defaults) return;
 
     self.enabled = [defaults objectForKey:@"enabled"] ? [defaults boolForKey:@"enabled"] : YES;
+
+    // 动画：设置页始终保证只有一个模式有效。
+    if ([defaults boolForKey:@"animParticle"]) {
+        self.animationType = KBGlowAnimationTypeParticle;
+    } else if ([defaults boolForKey:@"animGlow"]) {
+        self.animationType = KBGlowAnimationTypeGlow;
+    } else {
+        self.animationType = KBGlowAnimationTypeRipple;
+    }
+
     self.glowSize = [defaults objectForKey:@"glowSize"] ? [defaults doubleForKey:@"glowSize"] : 60.0;
     self.glowDuration = [defaults objectForKey:@"glowDuration"] ? [defaults doubleForKey:@"glowDuration"] : 0.6;
     self.glowOpacity = [defaults objectForKey:@"glowOpacity"] ? [defaults doubleForKey:@"glowOpacity"] : 0.8;
@@ -65,48 +74,33 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
     self.baiduEnabled = [defaults objectForKey:@"baiduEnabled"] ? [defaults boolForKey:@"baiduEnabled"] : YES;
     self.sogouEnabled = [defaults objectForKey:@"sogouEnabled"] ? [defaults boolForKey:@"sogouEnabled"] : YES;
 
-    // 单一动画状态源：animationType，同时兼容旧版三个 bool。
-    NSInteger type = [defaults objectForKey:@"animationType"] ? [defaults integerForKey:@"animationType"] : -1;
-    if (type < 0 || type > 2) {
-        if ([defaults boolForKey:@"animParticle"]) type = KBGlowAnimationTypeParticle;
-        else if ([defaults boolForKey:@"animGlow"]) type = KBGlowAnimationTypeGlow;
-        else type = KBGlowAnimationTypeRipple;
-    }
-    self.animationType = (KBGlowAnimationType)type;
-
+    // 自定义颜色只有在明确存在 customColor 时才优先；选择预设颜色时会清掉它。
     NSArray *custom = [defaults objectForKey:@"customColor"];
     if ([custom isKindOfClass:[NSArray class]] && custom.count >= 3) {
-        CGFloat r = MAX(0.0, MIN(1.0, [custom[0] doubleValue]));
-        CGFloat g = MAX(0.0, MIN(1.0, [custom[1] doubleValue]));
-        CGFloat b = MAX(0.0, MIN(1.0, [custom[2] doubleValue]));
-        CGFloat a = custom.count >= 4 ? MAX(0.0, MIN(1.0, [custom[3] doubleValue])) : 1.0;
-        self.glowColor = [UIColor colorWithRed:r green:g blue:b alpha:a];
+        self.glowColor = [UIColor colorWithRed:[custom[0] doubleValue]
+                                         green:[custom[1] doubleValue]
+                                          blue:[custom[2] doubleValue]
+                                         alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
+    } else if ([defaults boolForKey:@"colorGreen"]) {
+        self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+    } else if ([defaults boolForKey:@"colorWhite"]) {
+        self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
+    } else if ([defaults boolForKey:@"colorPink"]) {
+        self.glowColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0];
+    } else if ([defaults boolForKey:@"colorCyan"]) {
+        self.glowColor = [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0];
+    } else if ([defaults boolForKey:@"colorOrange"]) {
+        self.glowColor = [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0];
+    } else if ([defaults boolForKey:@"colorPurple"]) {
+        self.glowColor = [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0];
+    } else if ([defaults boolForKey:@"colorRed"]) {
+        self.glowColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0];
+    } else if ([defaults boolForKey:@"colorBlue"]) {
+        self.glowColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
     } else {
-        NSString *colorType = [defaults stringForKey:@"colorType"];
-        if (!colorType) {
-            if ([defaults boolForKey:@"colorBlue"]) colorType = @"colorBlue";
-            else if ([defaults boolForKey:@"colorRed"]) colorType = @"colorRed";
-            else if ([defaults boolForKey:@"colorPurple"]) colorType = @"colorPurple";
-            else if ([defaults boolForKey:@"colorOrange"]) colorType = @"colorOrange";
-            else if ([defaults boolForKey:@"colorCyan"]) colorType = @"colorCyan";
-            else if ([defaults boolForKey:@"colorPink"]) colorType = @"colorPink";
-            else if ([defaults boolForKey:@"colorWhite"]) colorType = @"colorWhite";
-            else colorType = @"colorGreen";
-        }
-        NSDictionary *colors = @{
-            @"colorGreen": [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0],
-            @"colorWhite": [UIColor colorWithWhite:1.0 alpha:1.0],
-            @"colorPink": [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0],
-            @"colorCyan": [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0],
-            @"colorOrange": [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0],
-            @"colorPurple": [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0],
-            @"colorRed": [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0],
-            @"colorBlue": [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0]
-        };
-        self.glowColor = colors[colorType] ?: colors[@"colorGreen"];
+        self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
     }
 }
-
 - (BOOL)isCurrentKeyboardEnabled {
     if (!self.enabled) return NO;
     NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
@@ -120,6 +114,12 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
     }
     if ([lower containsString:@"sogou"] || [lower containsString:@"sohu"]) {
         return self.sogouEnabled;
+    }
+    // 部分版本的第三方输入法使用不同的 extension bundle id。
+    // 不误伤系统键盘：只有明显属于 keyboard/input extension 的进程才允许。
+    if ([lower containsString:@"keyboard"] || [lower containsString:@"inputmethod"] ||
+        [lower containsString:@"inputextension"] || [lower containsString:@"ime"]) {
+        return YES;
     }
     return NO;
 }
@@ -164,6 +164,10 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 }
 
 - (void)triggerGlowInView:(UIView *)view atPoint:(CGPoint)point {
+    // 设置页与键盘进程属于不同进程。Darwin 通知理论上会刷新，但为了避免
+    // cfprefsd 缓存/通知丢失导致“设置改了但仍用旧配置”，每次按键前重新读取一次。
+    // 这只读取少量 NSUserDefaults，不改变光效实现本身。
+    [self reloadSettings];
     if (!self.enabled || !view || ![self isCurrentKeyboardEnabled]) return;
 
     UIView *keyView = [self findKeyViewFromView:view];

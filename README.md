@@ -1,12 +1,4 @@
-# KBGlow v1.0.4
-
-## v1.0.4 settings fixes
-- Unified animation/color state and cross-process preference synchronization.
-- All switches/sliders now notify the tweak immediately.
-- Reset restores explicit defaults instead of relying on implicit reads.
-- Fixed glow animation so duration/opacity are actually reflected.
-- Kept the existing RootHide injection scope and keyboard glow implementation.
-
+# KBGlow v1.0.5
 
 RootHide/Theos jailbreak tweak for keyboard key glow effects.
 
