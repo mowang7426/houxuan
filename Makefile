@@ -2,7 +2,7 @@ ARCHS = arm64e
 TARGET = iphone:clang::15.0
 include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = KBGlow
-KBGlow_FILES = Tweak.xm KBGlowManager.m KBGlowView.m
+KBGlow_FILES = Tweak.xm KBGlowManager.m KBGlowView.m KBGlowTouchRecognizer.m
 KBGlow_CFLAGS = -fobjc-arc
 KBGlow_FRAMEWORKS = UIKit QuartzCore
 BUNDLE_NAME = KBGlowPrefs

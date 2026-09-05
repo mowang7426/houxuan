@@ -19,5 +19,5 @@
 - (BOOL)isCurrentKeyboardEnabled;
 - (BOOL)isKeyView:(UIView *)view;
 - (UIView *)findKeyViewFromView:(UIView *)view;
-- (void)handleTouch:(UITouch *)touch inWindow:(UIWindow *)window;
+- (void)handleGlowGesture:(UIGestureRecognizer *)gesture;
 @end
