@@ -17,7 +17,6 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center, void *ob
     return self;
 }
 - (void)dealloc { CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), kKBGlowDarwinNotification, NULL); }
-
 - (void)reloadSettings {
     NSUserDefaults *d=[[NSUserDefaults alloc] initWithSuiteName:kKBGlowDomain];
     self.enabled = [d objectForKey:@"enabled"] ? [d boolForKey:@"enabled"] : YES;
@@ -32,44 +31,41 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center, void *ob
     self.sogouEnabled=[d objectForKey:@"sogouEnabled"] ? [d boolForKey:@"sogouEnabled"] : YES;
     NSArray *c=[d objectForKey:@"colorRGB"];
     if ([c isKindOfClass:NSArray.class] && c.count>=3) self.glowColor=[UIColor colorWithRed:[c[0] doubleValue] green:[c[1] doubleValue] blue:[c[2] doubleValue] alpha:1];
-    else self.glowColor=[UIColor colorWithRed:0.0 green:0.55 blue:1.0 alpha:1];
+    else self.glowColor=[UIColor colorWithRed:0 green:.55 blue:1 alpha:1];
 }
-
 - (BOOL)isCurrentKeyboardEnabled {
     if (!self.enabled) return NO;
     NSString *b=[[[NSBundle mainBundle] bundleIdentifier] lowercaseString];
-    if (!b) return NO;
-    if ([b containsString:@"wetype"] || [b containsString:@"wechat"] || [b containsString:@"wcinput"]) return self.wechatEnabled;
-    if ([b containsString:@"baidu"]) return self.baiduEnabled;
-    if ([b containsString:@"sogou"] || [b containsString:@"sohu"]) return self.sogouEnabled;
-    // Some keyboard extensions use private/renamed bundle IDs. If the process is an extension,
-    // allow the tweak to run; RootHide's Filter is still the outer injection boundary.
-    if ([b containsString:@"keyboardextension"] || [b containsString:@"keyboard-extension"]) return YES;
+    NSString *p=[[[NSProcessInfo processInfo] processName] lowercaseString];
+    if ([b containsString:@"wetype"] || [b containsString:@"wechatinput"] || [b containsString:@"wcinput"] || [p containsString:@"wetype"] || [p containsString:@"wechatinput"] || [p containsString:@"wcinput"]) return self.wechatEnabled;
+    if ([b containsString:@"baidu"] || [p containsString:@"baidu"]) return self.baiduEnabled;
+    if ([b containsString:@"sogou"] || [b containsString:@"sohu.inputmethod"] || [p containsString:@"sogou"]) return self.sogouEnabled;
     return NO;
 }
-
 - (UIView *)findKeyViewFromView:(UIView *)view {
     UIView *v=view; UIView *control=nil;
-    for (NSInteger i=0; v && i<12; i++, v=v.superview) {
+    for (NSInteger i=0; v && i<16; i++, v=v.superview) {
         NSString *n=NSStringFromClass(v.class).lowercaseString;
-        if ([n containsString:@"keyboardkey"] || [n containsString:@"keyview"] || [n containsString:@"keyplane"] || [n containsString:@"keybutton"]) return v;
+        if ([n containsString:@"keyboardkey"] || [n containsString:@"keyview"] || [n containsString:@"keyplane"] || [n containsString:@"keybutton"] || [n containsString:@"imebutton"]) return v;
         if (!control && [v isKindOfClass:UIControl.class]) control=v;
     }
     return control ?: view;
 }
-
+- (void)handleGlowGesture:(UIGestureRecognizer *)gesture {
+    if (gesture.state != UIGestureRecognizerStateBegan || !self.enabled || ![self isCurrentKeyboardEnabled]) return;
+    UIView *v=gesture.view; UIWindow *w=v.window; if (!v || !w) return;
+    CGPoint p=[gesture locationInView:w];
+    [self triggerGlowInView:w atPoint:p];
+}
 - (void)triggerGlowInView:(UIView *)view atPoint:(CGPoint)point {
-    if (!view || ![self isCurrentKeyboardEnabled]) return;
-    // Draw in the window instead of the key's superview. This avoids clipping by private
-    // keyboard containers and works with WeType's custom key hierarchy.
-    UIWindow *window=view.window;
+    if (!view || !self.enabled) return;
+    UIWindow *window = [view isKindOfClass:UIWindow.class] ? (UIWindow *)view : view.window;
     if (!window) return;
-    CGPoint p=[view convertPoint:point toView:window];
     KBGlowView *glow=[[KBGlowView alloc] initWithFrame:window.bounds];
     glow.glowColor=self.glowColor ?: [UIColor colorWithRed:0 green:.55 blue:1 alpha:1];
-    glow.glowSize=self.glowSize; glow.glowDuration=self.glowDuration; glow.glowOpacity=self.glowOpacity; glow.animationType=self.animationType;
+    glow.glowSize=MAX(12,self.glowSize); glow.glowDuration=MAX(.08,self.glowDuration); glow.glowOpacity=MIN(1,MAX(.05,self.glowOpacity)); glow.animationType=self.animationType;
     glow.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-    [window addSubview:glow]; [glow startAnimationAtPoint:p];
+    [window addSubview:glow]; [glow startAnimationAtPoint:point];
 }
 - (void)notifySettingsChanged { CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kKBGlowDarwinNotification, NULL, NULL, true); }
 - (BOOL)isKeyView:(UIView *)view { return [self findKeyViewFromView:view] != view || [view isKindOfClass:UIControl.class]; }

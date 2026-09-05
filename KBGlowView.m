@@ -1,5 +1,6 @@
 #import "KBGlowView.h"
 #import <QuartzCore/QuartzCore.h>
+#import <math.h>
 
 @implementation KBGlowView
 - (instancetype)initWithFrame:(CGRect)frame { if ((self=[super initWithFrame:frame])) { self.userInteractionEnabled=NO; self.backgroundColor=UIColor.clearColor; _glowSize=55; _glowDuration=.45; _glowOpacity=.75; _animationType=KBGlowAnimationTypeRipple; } return self; }
