@@ -1,121 +1,180 @@
 #import "KBGlowManager.h"
+#import "KBGlowSettings.h"
 #import <objc/runtime.h>
 
-static NSString *const kKBGlowDomain= @"com.mowang.kbglow";
-static CFStringRef const kKBGlowDarwinNotification=CFSTR("com.mowang.kbglow.settingsChanged");
-static const void *kTouchGlowKey=&kTouchGlowKey;
-static const void *kTouchContainerKey=&kTouchContainerKey;
+static CFStringRef const kKBGlowDarwinNotification = CFSTR("com.mowang.kbglow.settingsChanged");
 
-static void KBGlowSettingsChanged(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo){
-    KBGlowManager *m=(__bridge KBGlowManager *)observer;
-    dispatch_async(dispatch_get_main_queue(), ^{ [m reloadSettings]; });
+static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
+                                       void *observer,
+                                       CFStringRef name,
+                                       const void *object,
+                                       CFDictionaryRef userInfo) {
+    KBGlowManager *mgr = (__bridge KBGlowManager *)observer;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [mgr reloadSettings];
+    });
 }
 
 @implementation KBGlowManager
 
-+ (instancetype)sharedManager { static KBGlowManager *m; static dispatch_once_t once; dispatch_once(&once, ^{ m=[KBGlowManager new]; [m reloadSettings]; }); return m; }
++ (instancetype)sharedManager {
+    static KBGlowManager *instance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        instance = [[KBGlowManager alloc] init];
+        [instance reloadSettings];
+    });
+    return instance;
+}
 
-- (instancetype)init { if((self=[super init])) CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),(__bridge const void *)(self),KBGlowSettingsChanged,kKBGlowDarwinNotification,NULL,CFNotificationSuspensionBehaviorDeliverImmediately); return self; }
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                         (__bridge const void *)(self),
+                                         KBGlowDarwinSettingsChanged,
+                                         kKBGlowDarwinNotification,
+                                         NULL,
+                                         CFNotificationSuspensionBehaviorDeliverImmediately);
+    }
+    return self;
+}
 
-- (void)dealloc { CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(),(__bridge const void *)(self),kKBGlowDarwinNotification,NULL); }
+- (void)dealloc {
+    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(),
+                                        (__bridge const void *)(self),
+                                        kKBGlowDarwinNotification,
+                                        NULL);
+}
 
 - (void)reloadSettings {
-    NSUserDefaults *d=[[NSUserDefaults alloc] initWithSuiteName:kKBGlowDomain];
-    [d synchronize];
-    self.enabled=[d objectForKey:@"enabled"] ? [d boolForKey:@"enabled"] : YES;
-    NSInteger t=[d objectForKey:@"animationType"] ? [d integerForKey:@"animationType"] : 0; if(t<0||t>2)t=0; self.animationType=(KBGlowAnimationType)t;
-    self.glowSize=[d objectForKey:@"glowSize"]?[d doubleForKey:@"glowSize"]:55;
-    self.glowDuration=[d objectForKey:@"glowDuration"]?[d doubleForKey:@"glowDuration"]:.45;
-    self.glowOpacity=[d objectForKey:@"glowOpacity"]?[d doubleForKey:@"glowOpacity"]:.75;
-    self.followFinger=[d objectForKey:@"followFinger"]?[d boolForKey:@"followFinger"]:YES;
-    self.wechatEnabled=[d objectForKey:@"wechatEnabled"]?[d boolForKey:@"wechatEnabled"]:YES;
-    self.baiduEnabled=[d objectForKey:@"baiduEnabled"]?[d boolForKey:@"baiduEnabled"]:YES;
-    self.sogouEnabled=[d objectForKey:@"sogouEnabled"]?[d boolForKey:@"sogouEnabled"]:YES;
-    NSArray *c=[d objectForKey:@"colorRGB"];
-    if([c isKindOfClass:NSArray.class]&&c.count>=3) self.glowColor=[UIColor colorWithRed:MAX(0,MIN(1,[c[0] doubleValue])) green:MAX(0,MIN(1,[c[1] doubleValue])) blue:MAX(0,MIN(1,[c[2] doubleValue])) alpha:1];
-    else self.glowColor=[UIColor colorWithRed:0 green:.55 blue:1 alpha:1];
+    self.enabled = [KBGlowSettings boolForKey:@"enabled" default:YES];
+
+    if ([KBGlowSettings boolForKey:@"animParticle" default:NO]) {
+        self.animationType = KBGlowAnimationTypeParticle;
+    } else if ([KBGlowSettings boolForKey:@"animGlow" default:NO]) {
+        self.animationType = KBGlowAnimationTypeGlow;
+    } else {
+        self.animationType = KBGlowAnimationTypeRipple;
+    }
+
+    self.glowSize = [KBGlowSettings doubleForKey:@"glowSize" default:60.0];
+    self.glowDuration = [KBGlowSettings doubleForKey:@"glowDuration" default:0.6];
+    self.glowOpacity = [KBGlowSettings doubleForKey:@"glowOpacity" default:0.8];
+    self.followFinger = [KBGlowSettings boolForKey:@"followFinger" default:YES];
+    self.wechatEnabled = [KBGlowSettings boolForKey:@"wechatEnabled" default:YES];
+    self.baiduEnabled = [KBGlowSettings boolForKey:@"baiduEnabled" default:YES];
+    self.sogouEnabled = [KBGlowSettings boolForKey:@"sogouEnabled" default:YES];
+
+    NSArray *custom = [KBGlowSettings objectForKey:@"customColor"];
+    if ([custom isKindOfClass:[NSArray class]] && custom.count >= 3) {
+        self.glowColor = [UIColor colorWithRed:[custom[0] doubleValue]
+                                         green:[custom[1] doubleValue]
+                                          blue:[custom[2] doubleValue]
+                                         alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
+    } else if ([KBGlowSettings boolForKey:@"colorGreen" default:NO]) {
+        self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+    } else if ([KBGlowSettings boolForKey:@"colorWhite" default:NO]) {
+        self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
+    } else if ([KBGlowSettings boolForKey:@"colorPink" default:NO]) {
+        self.glowColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0];
+    } else if ([KBGlowSettings boolForKey:@"colorCyan" default:NO]) {
+        self.glowColor = [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0];
+    } else if ([KBGlowSettings boolForKey:@"colorOrange" default:NO]) {
+        self.glowColor = [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0];
+    } else if ([KBGlowSettings boolForKey:@"colorPurple" default:NO]) {
+        self.glowColor = [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0];
+    } else if ([KBGlowSettings boolForKey:@"colorRed" default:NO]) {
+        self.glowColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0];
+    } else if ([KBGlowSettings boolForKey:@"colorBlue" default:NO]) {
+        self.glowColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
+    } else {
+        self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+    }
 }
 
 - (BOOL)isCurrentKeyboardEnabled {
-    NSString *b=[[[NSBundle mainBundle] bundleIdentifier] lowercaseString]; NSString *p=[[[NSProcessInfo processInfo] processName] lowercaseString];
-    if([b containsString:@"wetype"]||[b containsString:@"wechatinput"]||[b containsString:@"wcinput"]||[p containsString:@"wetype"]||[p containsString:@"wechatinput"]||[p containsString:@"wcinput"]) return self.wechatEnabled;
-    if([b containsString:@"baidu"]||[p containsString:@"baidu"]) return self.baiduEnabled;
-    if([b containsString:@"sogou"]||[b containsString:@"sohu.inputmethod"]||[p containsString:@"sogou"]) return self.sogouEnabled;
+    if (!self.enabled) return NO;
+    NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
+    if (!bundleID) return NO;
+    NSString *lower = [bundleID lowercaseString];
+    if ([lower containsString:@"wechat"] || [lower containsString:@"wcinput"] || [lower containsString:@"wetype"]) {
+        return self.wechatEnabled;
+    }
+    if ([lower containsString:@"baidu"]) {
+        return self.baiduEnabled;
+    }
+    if ([lower containsString:@"sogou"] || [lower containsString:@"sohu"]) {
+        return self.sogouEnabled;
+    }
     return NO;
 }
 
-// 向上查找按键视图
-- (UIView *)findKeyViewFromView:(UIView *)view {
+- (BOOL)isKeyView:(UIView *)view {
+    if (!view) return NO;
     UIView *current = view;
-    for (NSInteger i = 0; i < 5 && current; i++) {
-        NSString *className = NSStringFromClass([current class]);
-        NSString *lower = [className lowercaseString];
+    for (NSInteger i = 0; i < 10 && current; i++) {
+        NSString *lower = [NSStringFromClass(current.class) lowercaseString];
         if ([lower containsString:@"key"] ||
             [lower containsString:@"button"] ||
-            [lower containsString:@"keyview"] ||
+            [lower containsString:@"keyboardkey"] ||
             [lower containsString:@"keyplane"]) {
-            return current;
+            return YES;
+        }
+        if ([current isKindOfClass:[UIControl class]]) {
+            return YES;
         }
         current = current.superview;
     }
-    return view;
+    return NO;
 }
 
-- (void)beginTouch:(UITouch *)touch inWindow:(UIWindow *)window atPoint:(CGPoint)point {
-    if(!touch||!window) return;
+- (UIView *)findKeyViewFromView:(UIView *)view {
+    UIView *current = view;
+    UIView *control = nil;
+    for (NSInteger i = 0; i < 10 && current; i++) {
+        NSString *lower = [NSStringFromClass(current.class) lowercaseString];
+        if ([lower containsString:@"keyboardkey"] ||
+            [lower containsString:@"keyview"] ||
+            [lower containsString:@"keyplane"] ||
+            [lower containsString:@"button"] ||
+            [lower containsString:@"key"]) {
+            return current;
+        }
+        if (!control && [current isKindOfClass:[UIControl class]]) {
+            control = current;
+        }
+        current = current.superview;
+    }
+    return control ?: view;
+}
 
-    // 停止旧的发光
-    KBGlowView *old=objc_getAssociatedObject(touch,kTouchGlowKey);
-    if(old) { [old stopAnimation]; objc_setAssociatedObject(touch,kTouchGlowKey,nil,OBJC_ASSOCIATION_ASSIGN); }
-
-    // 找到触摸点下面的按键视图
-    UIView *hitView = [window hitTest:point withEvent:nil];
-    if(!hitView) return;
-    UIView *keyView = [self findKeyViewFromView:hitView];
+- (void)triggerGlowInView:(UIView *)view atPoint:(CGPoint)point {
+    if (!self.enabled || !view || ![self isCurrentKeyboardEnabled]) return;
+    UIView *keyView = [self findKeyViewFromView:view];
+    if (!keyView) keyView = view;
     UIView *container = keyView.superview ?: keyView;
-    if(!container) return;
-
-    // 转换坐标到 container
-    CGPoint localPoint = [window convertPoint:point toView:container];
-
-    // 创建发光视图，添加到按键周围
-    KBGlowView *g=[[KBGlowView alloc] initWithFrame:container.bounds];
-    g.glowColor=self.glowColor;
-    g.glowSize=MAX(12,self.glowSize);
-    g.glowDuration=MAX(.08,self.glowDuration);
-    g.glowOpacity=MIN(1,MAX(.05,self.glowOpacity));
-    g.animationType=self.animationType;
-    g.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-    [container addSubview:g];
-
-    [g startTrackingAtPoint:localPoint];
-
-    objc_setAssociatedObject(touch,kTouchGlowKey,g,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    objc_setAssociatedObject(touch,kTouchContainerKey,container,OBJC_ASSOCIATION_ASSIGN);
+    if (!container) return;
+    CGPoint convertedPoint;
+    if (self.followFinger) {
+        convertedPoint = [view convertPoint:point toView:container];
+    } else {
+        convertedPoint = [keyView convertPoint:CGPointMake(CGRectGetMidX(keyView.bounds), CGRectGetMidY(keyView.bounds))
+                                       toView:container];
+    }
+    KBGlowView *glowView = [[KBGlowView alloc] initWithFrame:container.bounds];
+    glowView.glowColor = self.glowColor ?: [UIColor colorWithRed:0 green:1 blue:0 alpha:1];
+    glowView.glowSize = self.glowSize;
+    glowView.glowDuration = self.glowDuration;
+    glowView.glowOpacity = self.glowOpacity;
+    glowView.animationType = self.animationType;
+    glowView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [container addSubview:glowView];
+    [glowView startAnimationAtPoint:convertedPoint];
 }
 
-- (void)moveTouch:(UITouch *)touch inWindow:(UIWindow *)window atPoint:(CGPoint)point {
-    KBGlowView *g=objc_getAssociatedObject(touch,kTouchGlowKey);
-    UIView *container=objc_getAssociatedObject(touch,kTouchContainerKey);
-    if(!g||!container) {
-        if(self.followFinger) [self beginTouch:touch inWindow:window atPoint:point];
-        return;
-    }
-    if(self.followFinger) {
-        CGPoint localPoint = [window convertPoint:point toView:container];
-        [g updateTrackingPoint:localPoint];
-    }
-}
-
-- (void)endTouch:(UITouch *)touch inWindow:(UIWindow *)window atPoint:(CGPoint)point cancelled:(BOOL)cancelled {
-    KBGlowView *g=objc_getAssociatedObject(touch,kTouchGlowKey);
-    UIView *container=objc_getAssociatedObject(touch,kTouchContainerKey);
-    if(!g) return;
-    CGPoint localPoint = point;
-    if(container) localPoint = [window convertPoint:point toView:container];
-    [g finishTrackingAtPoint:localPoint cancelled:cancelled];
-    objc_setAssociatedObject(touch,kTouchGlowKey,nil,OBJC_ASSOCIATION_ASSIGN);
-    objc_setAssociatedObject(touch,kTouchContainerKey,nil,OBJC_ASSOCIATION_ASSIGN);
+- (void)notifySettingsChanged {
+    [KBGlowSettings notifyChanged];
 }
 
 @end
