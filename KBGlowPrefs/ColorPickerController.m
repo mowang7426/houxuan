@@ -68,9 +68,8 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
     NSArray *keys = @[@"colorGreen", @"colorBlue", @"colorRed", @"colorPurple", @"colorOrange", @"colorCyan", @"colorPink", @"colorWhite"];
     for (NSString *key in keys) [defaults setBool:[key isEqualToString:selected] forKey:key];
     [defaults removeObjectForKey:@"customColor"];
-    [defaults setObject:selected forKey:@"colorType"];
     [defaults synchronize];
-    CFPreferencesAppSynchronize((__bridge CFStringRef)kSuite);
+    CFPreferencesSynchronize((__bridge CFStringRef)kSuite, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
     [self showToast:@"颜色已应用"];
@@ -88,10 +87,8 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key) return;
     NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
-    [defaults setDouble:[value doubleValue] forKey:key];
+    [defaults setObject:value forKey:key];
     [defaults synchronize];
-    CFPreferencesAppSynchronize((__bridge CFStringRef)kSuite);
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
 }
 
 - (id)readCustomValue:(PSSpecifier *)specifier {
@@ -110,9 +107,8 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
         [defaults setBool:NO forKey:key];
     }
     [defaults setObject:@[@(r), @(g), @(b), @1.0] forKey:@"customColor"];
-    [defaults setObject:@"custom" forKey:@"colorType"];
     [defaults synchronize];
-    CFPreferencesAppSynchronize((__bridge CFStringRef)kSuite);
+    CFPreferencesSynchronize((__bridge CFStringRef)kSuite, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
     [self showToast:@"自定义颜色已应用"];

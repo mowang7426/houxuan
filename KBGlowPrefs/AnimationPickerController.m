@@ -42,10 +42,8 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
     for (NSString *key in @[@"animRipple", @"animGlow", @"animParticle"]) {
         [defaults setBool:[key isEqualToString:selected] forKey:key];
     }
-    NSInteger type = [selected isEqualToString:@"animGlow"] ? 1 : ([selected isEqualToString:@"animParticle"] ? 2 : 0);
-    [defaults setInteger:type forKey:@"animationType"];
     [defaults synchronize];
-    CFPreferencesAppSynchronize((__bridge CFStringRef)kSuite);
+    CFPreferencesSynchronize((__bridge CFStringRef)kSuite, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
 }
