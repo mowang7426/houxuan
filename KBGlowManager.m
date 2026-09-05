@@ -48,47 +48,61 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 }
 
 - (void)reloadSettings {
-    self.enabled = [KBGlowSettings boolForKey:@"enabled" default:YES];
+    @try {
+        self.enabled = [KBGlowSettings boolForKey:@"enabled" default:YES];
 
-    if ([KBGlowSettings boolForKey:@"animParticle" default:NO]) {
-        self.animationType = KBGlowAnimationTypeParticle;
-    } else if ([KBGlowSettings boolForKey:@"animGlow" default:NO]) {
-        self.animationType = KBGlowAnimationTypeGlow;
-    } else {
+        if ([KBGlowSettings boolForKey:@"animParticle" default:NO]) {
+            self.animationType = KBGlowAnimationTypeParticle;
+        } else if ([KBGlowSettings boolForKey:@"animGlow" default:NO]) {
+            self.animationType = KBGlowAnimationTypeGlow;
+        } else {
+            self.animationType = KBGlowAnimationTypeRipple;
+        }
+
+        self.glowSize = [KBGlowSettings doubleForKey:@"glowSize" default:60.0];
+        self.glowDuration = [KBGlowSettings doubleForKey:@"glowDuration" default:0.6];
+        self.glowOpacity = [KBGlowSettings doubleForKey:@"glowOpacity" default:0.8];
+        self.followFinger = [KBGlowSettings boolForKey:@"followFinger" default:YES];
+        self.wechatEnabled = [KBGlowSettings boolForKey:@"wechatEnabled" default:YES];
+        self.baiduEnabled = [KBGlowSettings boolForKey:@"baiduEnabled" default:YES];
+        self.sogouEnabled = [KBGlowSettings boolForKey:@"sogouEnabled" default:YES];
+
+        NSArray *custom = [KBGlowSettings objectForKey:@"customColor"];
+        if ([custom isKindOfClass:[NSArray class]] && custom.count >= 3) {
+            self.glowColor = [UIColor colorWithRed:[custom[0] doubleValue]
+                                             green:[custom[1] doubleValue]
+                                              blue:[custom[2] doubleValue]
+                                             alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
+        } else if ([KBGlowSettings boolForKey:@"colorGreen" default:NO]) {
+            self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+        } else if ([KBGlowSettings boolForKey:@"colorWhite" default:NO]) {
+            self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
+        } else if ([KBGlowSettings boolForKey:@"colorPink" default:NO]) {
+            self.glowColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0];
+        } else if ([KBGlowSettings boolForKey:@"colorCyan" default:NO]) {
+            self.glowColor = [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0];
+        } else if ([KBGlowSettings boolForKey:@"colorOrange" default:NO]) {
+            self.glowColor = [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0];
+        } else if ([KBGlowSettings boolForKey:@"colorPurple" default:NO]) {
+            self.glowColor = [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0];
+        } else if ([KBGlowSettings boolForKey:@"colorRed" default:NO]) {
+            self.glowColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0];
+        } else if ([KBGlowSettings boolForKey:@"colorBlue" default:NO]) {
+            self.glowColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
+        } else {
+            self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
+        }
+    } @catch (NSException *e) {
+        // 配置读取失败时用默认值，确保光效不会消失
+        self.enabled = YES;
         self.animationType = KBGlowAnimationTypeRipple;
-    }
-
-    self.glowSize = [KBGlowSettings doubleForKey:@"glowSize" default:60.0];
-    self.glowDuration = [KBGlowSettings doubleForKey:@"glowDuration" default:0.6];
-    self.glowOpacity = [KBGlowSettings doubleForKey:@"glowOpacity" default:0.8];
-    self.followFinger = [KBGlowSettings boolForKey:@"followFinger" default:YES];
-    self.wechatEnabled = [KBGlowSettings boolForKey:@"wechatEnabled" default:YES];
-    self.baiduEnabled = [KBGlowSettings boolForKey:@"baiduEnabled" default:YES];
-    self.sogouEnabled = [KBGlowSettings boolForKey:@"sogouEnabled" default:YES];
-
-    NSArray *custom = [KBGlowSettings objectForKey:@"customColor"];
-    if ([custom isKindOfClass:[NSArray class]] && custom.count >= 3) {
-        self.glowColor = [UIColor colorWithRed:[custom[0] doubleValue]
-                                         green:[custom[1] doubleValue]
-                                          blue:[custom[2] doubleValue]
-                                         alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
-    } else if ([KBGlowSettings boolForKey:@"colorGreen" default:NO]) {
-        self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-    } else if ([KBGlowSettings boolForKey:@"colorWhite" default:NO]) {
-        self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
-    } else if ([KBGlowSettings boolForKey:@"colorPink" default:NO]) {
-        self.glowColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0];
-    } else if ([KBGlowSettings boolForKey:@"colorCyan" default:NO]) {
-        self.glowColor = [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0];
-    } else if ([KBGlowSettings boolForKey:@"colorOrange" default:NO]) {
-        self.glowColor = [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0];
-    } else if ([KBGlowSettings boolForKey:@"colorPurple" default:NO]) {
-        self.glowColor = [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0];
-    } else if ([KBGlowSettings boolForKey:@"colorRed" default:NO]) {
-        self.glowColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0];
-    } else if ([KBGlowSettings boolForKey:@"colorBlue" default:NO]) {
-        self.glowColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
-    } else {
+        self.glowSize = 60.0;
+        self.glowDuration = 0.6;
+        self.glowOpacity = 0.8;
+        self.followFinger = YES;
+        self.wechatEnabled = YES;
+        self.baiduEnabled = YES;
+        self.sogouEnabled = YES;
         self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
     }
 }

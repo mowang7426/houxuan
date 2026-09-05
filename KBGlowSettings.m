@@ -6,26 +6,35 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 @implementation KBGlowSettings
 
 + (NSMutableDictionary *)loadDict {
-    NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithContentsOfFile:kSettingsPath];
-    if (!dict) dict = [NSMutableDictionary dictionary];
-    return dict;
+    @try {
+        NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithContentsOfFile:kSettingsPath];
+        if (!dict) dict = [NSMutableDictionary dictionary];
+        return dict;
+    } @catch (NSException *e) {
+        return [NSMutableDictionary dictionary];
+    }
 }
 
 + (void)saveDict:(NSDictionary *)dict {
-    [dict writeToFile:kSettingsPath atomically:YES];
+    @try {
+        [dict writeToFile:kSettingsPath atomically:YES];
+    } @catch (NSException *e) {
+    }
 }
 
 + (id)objectForKey:(NSString *)key {
     if (!key) return nil;
-    @synchronized (self) {
+    @try {
         NSDictionary *dict = [self loadDict];
         return dict[key];
+    } @catch (NSException *e) {
+        return nil;
     }
 }
 
 + (void)setObject:(id)value forKey:(NSString *)key {
     if (!key) return;
-    @synchronized (self) {
+    @try {
         NSMutableDictionary *dict = [self loadDict];
         if (value) {
             dict[key] = value;
@@ -33,13 +42,17 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
             [dict removeObjectForKey:key];
         }
         [self saveDict:dict];
+    } @catch (NSException *e) {
     }
 }
 
 + (BOOL)boolForKey:(NSString *)key default:(BOOL)def {
-    id value = [self objectForKey:key];
-    if ([value isKindOfClass:[NSNumber class]]) {
-        return [value boolValue];
+    @try {
+        id value = [self objectForKey:key];
+        if ([value isKindOfClass:[NSNumber class]]) {
+            return [value boolValue];
+        }
+    } @catch (NSException *e) {
     }
     return def;
 }
@@ -49,9 +62,12 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 }
 
 + (double)doubleForKey:(NSString *)key default:(double)def {
-    id value = [self objectForKey:key];
-    if ([value isKindOfClass:[NSNumber class]]) {
-        return [value doubleValue];
+    @try {
+        id value = [self objectForKey:key];
+        if ([value isKindOfClass:[NSNumber class]]) {
+            return [value doubleValue];
+        }
+    } @catch (NSException *e) {
     }
     return def;
 }
@@ -68,7 +84,10 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 }
 
 + (void)notifyChanged {
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
+    @try {
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
+    } @catch (NSException *e) {
+    }
 }
 
 @end
