@@ -1,35 +1,51 @@
 #import "KBGlowSettings.h"
-#import <CoreFoundation/CoreFoundation.h>
 
-static NSString *const kAppID = @"com.mowang.kbglow";
+static NSString *const kSettingsPath = @"/var/mobile/Library/Preferences/com.mowang.kbglow.plist";
 static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 
 @implementation KBGlowSettings
 
++ (NSMutableDictionary *)loadDict {
+    NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithContentsOfFile:kSettingsPath];
+    if (!dict) dict = [NSMutableDictionary dictionary];
+    return dict;
+}
+
++ (void)saveDict:(NSDictionary *)dict {
+    [dict writeToFile:kSettingsPath atomically:YES];
+}
+
 + (id)objectForKey:(NSString *)key {
     if (!key) return nil;
-    CFPropertyListRef value = CFPreferencesCopyAppValue((__bridge CFStringRef)key, (__bridge CFStringRef)kAppID);
-    if (value) {
-        return (__bridge_transfer id)value;
+    @synchronized (self) {
+        NSDictionary *dict = [self loadDict];
+        return dict[key];
     }
-    return nil;
 }
 
 + (void)setObject:(id)value forKey:(NSString *)key {
     if (!key) return;
-    CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)value, (__bridge CFStringRef)kAppID);
+    @synchronized (self) {
+        NSMutableDictionary *dict = [self loadDict];
+        if (value) {
+            dict[key] = value;
+        } else {
+            [dict removeObjectForKey:key];
+        }
+        [self saveDict:dict];
+    }
 }
 
 + (BOOL)boolForKey:(NSString *)key default:(BOOL)def {
-    if (!key) return def;
-    Boolean exists = false;
-    Boolean value = CFPreferencesGetAppBooleanValue((__bridge CFStringRef)key, (__bridge CFStringRef)kAppID, &exists);
-    return exists ? (BOOL)value : def;
+    id value = [self objectForKey:key];
+    if ([value isKindOfClass:[NSNumber class]]) {
+        return [value boolValue];
+    }
+    return def;
 }
 
 + (void)setBool:(BOOL)value forKey:(NSString *)key {
-    if (!key) return;
-    CFPreferencesSetAppValue((__bridge CFStringRef)key, value ? kCFBooleanTrue : kCFBooleanFalse, (__bridge CFStringRef)kAppID);
+    [self setObject:@(value) forKey:key];
 }
 
 + (double)doubleForKey:(NSString *)key default:(double)def {
@@ -45,12 +61,10 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 }
 
 + (void)removeObjectForKey:(NSString *)key {
-    if (!key) return;
-    CFPreferencesSetAppValue((__bridge CFStringRef)key, NULL, (__bridge CFStringRef)kAppID);
+    [self setObject:nil forKey:key];
 }
 
 + (void)synchronize {
-    CFPreferencesAppSynchronize((__bridge CFStringRef)kAppID);
 }
 
 + (void)notifyChanged {
