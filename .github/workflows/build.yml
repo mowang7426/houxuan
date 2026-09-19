@@ -1,81 +1,88 @@
-name: Build RainbowKeyboard
+name: Build RainbowKeyboard Native Packages
 
 on:
   workflow_dispatch:
   push:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+  rootless:
+    name: Native Rootless deb
     runs-on: macos-14
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install dependencies
+      - uses: actions/checkout@v4
+      - name: Install tools
         run: brew install dpkg ldid xz
-      - name: Install Roothide Theos
+      - name: Install Theos and SDK
         run: |
           set -e
+          git clone --recursive --depth=1 https://github.com/theos/theos.git "$HOME/theos"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
           echo "$HOME/theos/bin" >> "$GITHUB_PATH"
-          rm -rf "$HOME/theos"
-          git clone --recursive --depth=1 https://github.com/roothide/theos.git "$HOME/theos"
-      - name: Install iPhoneOS 16.5 SDK
-        run: |
-          set -e
-          rm -rf /tmp/theos-sdks
-          mkdir -p "$HOME/theos/sdks"
-          git clone --depth=1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/theos-sdks
-          cd /tmp/theos-sdks
+          git clone --depth=1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/sdks
+          cd /tmp/sdks
           git sparse-checkout set iPhoneOS16.5.sdk
           cp -R iPhoneOS16.5.sdk "$HOME/theos/sdks/"
-      - name: Verify source configuration
+      - name: Build native Rootless
         run: |
           set -e
-          grep -q '^ARCHS := arm64$' Makefile
-          grep -q '^Architecture: iphoneos-arm64$' control
-          test -f "$THEOS/makefiles/common.mk"
-          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
-      - name: Build Rootless
-        run: |
-          set -e
-          make clean || true
           rm -rf packages build
-          THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1
+          ARCHS=arm64 THEOS_PACKAGE_SCHEME=rootless make clean package FINALPACKAGE=1
           f=$(find packages -maxdepth 1 -type f -name '*.deb' | head -n 1)
           test -n "$f"
           mkdir -p build
           cp "$f" build/RainbowKeyboard-rootless.deb
-      - name: Build Roothide
+      - name: Validate native Rootless package
         run: |
           set -e
-          make clean || true
-          rm -rf packages
-          THEOS_PACKAGE_SCHEME=roothide make package FINALPACKAGE=1
+          d=build/RainbowKeyboard-rootless.deb
+          test "$(dpkg-deb -f "$d" Architecture)" = iphoneos-arm64
+          ! dpkg-deb -c "$d" | grep -q 'pkgmirror'
+          dpkg-deb -c "$d" | grep -q 'RainbowKeyboard.dylib'
+          dpkg-deb -c "$d" | grep -q 'RainbowKeyboardPrefs.bundle'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RainbowKeyboard-native-rootless
+          path: build/RainbowKeyboard-rootless.deb
+
+  roothide:
+    name: Native Roothide deb
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: brew install dpkg ldid xz
+      - name: Install Roothide Theos and SDK
+        run: |
+          set -e
+          git clone --recursive --depth=1 https://github.com/roothide/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          echo "$HOME/theos/bin" >> "$GITHUB_PATH"
+          git clone --depth=1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/sdks
+          cd /tmp/sdks
+          git sparse-checkout set iPhoneOS16.5.sdk
+          cp -R iPhoneOS16.5.sdk "$HOME/theos/sdks/"
+      - name: Build native Roothide
+        run: |
+          set -e
+          rm -rf packages build
+          ARCHS=arm64e THEOS_PACKAGE_SCHEME=roothide make clean package FINALPACKAGE=1
           f=$(find packages -maxdepth 1 -type f -name '*.deb' | head -n 1)
           test -n "$f"
+          mkdir -p build
           cp "$f" build/RainbowKeyboard-roothide.deb
-      - name: Verify packages
+      - name: Validate native Roothide package
         run: |
           set -e
-          for deb in build/*.deb; do
-            echo "===== $deb ====="
-            dpkg-deb -f "$deb" Architecture
-            dpkg-deb -c "$deb" | grep -q 'Library/PreferenceLoader/Preferences/RainbowKeyboardPrefs.plist'
-            dpkg-deb -c "$deb" | grep -q 'Library/PreferenceBundles/RainbowKeyboardPrefs.bundle'
-          done
-      - name: Verify package output
-        run: |
-          set -e
-          test -f build/RainbowKeyboard-rootless.deb
-          test -f build/RainbowKeyboard-roothide.deb
-          echo "Do not convert either package; install the package matching the jailbreak environment."
-          dpkg-deb -f build/RainbowKeyboard-rootless.deb Package Architecture
-          dpkg-deb -f build/RainbowKeyboard-roothide.deb Package Architecture
-
-      - name: Upload DEB packages
-        uses: actions/upload-artifact@v4
+          d=build/RainbowKeyboard-roothide.deb
+          test "$(dpkg-deb -f "$d" Architecture)" = iphoneos-arm64e
+          ! dpkg-deb -c "$d" | grep -q 'pkgmirror'
+          dpkg-deb -c "$d" | grep -q 'RainbowKeyboard.dylib'
+          dpkg-deb -c "$d" | grep -q 'RainbowKeyboardPrefs.bundle'
+      - uses: actions/upload-artifact@v4
         with:
-          name: RainbowKeyboard-debs-native
-          path: build/*.deb
-          if-no-files-found: error
+          name: RainbowKeyboard-native-roothide
+          path: build/RainbowKeyboard-roothide.deb
