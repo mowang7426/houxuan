@@ -9,11 +9,9 @@
         <key>cell</key>
         <string>PSLinkCell</string>
         <key>detail</key>
-        <string>RKBRootListController</string>
+        <string>PSListController</string>
         <key>label</key>
         <string>彩虹键盘光效</string>
-        <key>icon</key>
-        <string>RainbowKeyboard</string>
     </dict>
 </dict>
 </plist>
