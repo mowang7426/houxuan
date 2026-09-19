@@ -41,6 +41,13 @@ jobs:
           cp -R iPhoneOS16.5.sdk "$HOME/theos/sdks/"
           test -f "$HOME/theos/sdks/iPhoneOS16.5.sdk/usr/include/Availability.h"
 
+      - name: Verify Theos environment
+        run: |
+          set -euo pipefail
+          test -f "$THEOS/makefiles/common.mk"
+          test -f "$THEOS/makefiles/tweak.mk"
+          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
+
       - name: Locate project
         run: |
           set -euo pipefail
@@ -53,11 +60,17 @@ jobs:
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-          for f in Makefile Tweak.xm control KBGlow.plist KBGlowPrefs/Info.plist KBGlowPrefs/RootListController.m; do
+          for f in Makefile Tweak.xm control KBGlow.plist KBGlowPrefs/Info.plist KBGlowPrefs/RootListController.m KBGlowPrefs/ColorPickerController.m; do
             test -f "$f"
           done
           grep -E '^(Package|Name|Version|Depends):' control
           grep -q 'iphone:clang:16.5' Makefile
+
+      - name: Prepare build directory
+        run: |
+          set -euo pipefail
+          rm -rf build
+          mkdir -p build
 
       - name: Build Rootless
         run: |
@@ -67,7 +80,6 @@ jobs:
           THEOS_PACKAGE_SCHEME=rootless make clean package FINALPACKAGE=1
           DEB="$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)"
           test -n "$DEB"
-          mkdir -p "$GITHUB_WORKSPACE/build"
           cp "$DEB" "$GITHUB_WORKSPACE/build/KBGlow-rootless.deb"
 
       - name: Build RootHide
@@ -78,21 +90,27 @@ jobs:
           THEOS_PACKAGE_SCHEME=roothide make clean package FINALPACKAGE=1
           DEB="$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)"
           test -n "$DEB"
-          mkdir -p "$GITHUB_WORKSPACE/build"
           cp "$DEB" "$GITHUB_WORKSPACE/build/KBGlow-roothide.deb"
 
       - name: Verify packages
         run: |
           set -euo pipefail
+          count=0
           for deb in build/*.deb; do
+            test -f "$deb"
+            count=$((count + 1))
             echo "===== $deb ====="
             dpkg-deb -I "$deb"
-            dpkg-deb -c "$deb"
-            dpkg-deb -c "$deb" | grep -q 'KBGlowPrefs.bundle'
-            dpkg-deb -c "$deb" | grep -Eq 'KBGlow\.plist$'
-            dpkg-deb -c "$deb" | grep -Eq 'KBGlow\.(dylib|bundle)'
+            listing="$(mktemp)"
+            dpkg-deb -c "$deb" > "$listing"
+            cat "$listing"
+            grep -Eq 'KBGlow\.plist$' "$listing"
+            grep -Eq 'KBGlow\.dylib$' "$listing"
+            grep -q 'KBGlowPrefs.bundle' "$listing"
+            grep -q 'KBGlowPrefs.bundle/KBGlowPrefs' "$listing"
+            rm -f "$listing"
           done
-          test "$(find build -maxdepth 1 -name '*.deb' | wc -l | tr -d ' ')" -eq 2
+          test "$count" -eq 2
 
       - name: Upload DEB packages
         uses: actions/upload-artifact@v4
