@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  SDK_URL: https://github.com/theos/sdks/releases/download/15.2-2/iPhoneOS15.2.sdk.tar.xz
+
 jobs:
   rootless:
     name: Build Rootless deb
@@ -16,15 +19,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Install Theos
-        uses: theos/setup-theos@v0.1.0
-        with:
-          theos-src: theos/theos
+        run: |
+          git clone --depth 1 https://github.com/theos/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
       - name: Install iOS SDK
         run: |
-          curl -L --fail --retry 3 -o sdk.zip \
-            https://github.com/theos/sdks/releases/download/15.2-2/iPhoneOS15.2.sdk.tar.xz
-          mkdir -p "$THEOS/sdks"
-          tar -xJf sdk.zip -C "$THEOS/sdks"
+          set -e
+          mkdir -p "$HOME/theos/sdks"
+          curl -fL --retry 5 --retry-delay 5 --retry-all-errors \
+            -o "$RUNNER_TEMP/iPhoneOS15.2.sdk.tar.xz" "$SDK_URL"
+          tar -xJf "$RUNNER_TEMP/iPhoneOS15.2.sdk.tar.xz" -C "$HOME/theos/sdks"
       - name: Build Rootless package
         run: make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
       - name: Upload Rootless deb
@@ -46,10 +50,11 @@ jobs:
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
       - name: Install iOS SDK
         run: |
-          curl -L --fail --retry 3 -o sdk.tar.xz \
-            https://github.com/theos/sdks/releases/download/15.2-2/iPhoneOS15.2.sdk.tar.xz
+          set -e
           mkdir -p "$HOME/theos/sdks"
-          tar -xJf sdk.tar.xz -C "$HOME/theos/sdks"
+          curl -fL --retry 5 --retry-delay 5 --retry-all-errors \
+            -o "$RUNNER_TEMP/iPhoneOS15.2.sdk.tar.xz" "$SDK_URL"
+          tar -xJf "$RUNNER_TEMP/iPhoneOS15.2.sdk.tar.xz" -C "$HOME/theos/sdks"
       - name: Build Roothide package
         run: make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
       - name: Upload Roothide deb
