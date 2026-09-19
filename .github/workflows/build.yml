@@ -11,7 +11,7 @@ permissions:
 jobs:
   rootless:
     name: Build Rootless deb
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
 
   roothide:
     name: Build Roothide deb
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
       - name: Checkout
         uses: actions/checkout@v4
