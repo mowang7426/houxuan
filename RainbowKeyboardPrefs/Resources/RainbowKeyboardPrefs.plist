@@ -5,7 +5,7 @@
     <key>entry</key>
     <dict>
         <key>bundle</key>
-        <string>RainbowKeyboardPrefs.bundle</string>
+        <string>com.minis.rainbowkeyboard.prefs</string>
         <key>cell</key>
         <string>PSLinkCell</string>
         <key>detail</key>
