@@ -64,9 +64,18 @@ jobs:
             dpkg-deb -c "$deb" | grep -q 'Library/PreferenceLoader/Preferences/RainbowKeyboardPrefs.plist'
             dpkg-deb -c "$deb" | grep -q 'Library/PreferenceBundles/RainbowKeyboardPrefs.bundle'
           done
+      - name: Verify package output
+        run: |
+          set -e
+          test -f build/RainbowKeyboard-rootless.deb
+          test -f build/RainbowKeyboard-roothide.deb
+          echo "Do not convert either package; install the package matching the jailbreak environment."
+          dpkg-deb -f build/RainbowKeyboard-rootless.deb Package Architecture
+          dpkg-deb -f build/RainbowKeyboard-roothide.deb Package Architecture
+
       - name: Upload DEB packages
         uses: actions/upload-artifact@v4
         with:
-          name: RainbowKeyboard-debs
+          name: RainbowKeyboard-debs-native
           path: build/*.deb
           if-no-files-found: error
