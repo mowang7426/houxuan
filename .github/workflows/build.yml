@@ -93,11 +93,17 @@ jobs:
             rm -rf /tmp/rk-deb
             mkdir -p /tmp/rk-deb
             dpkg-deb -x "$deb" /tmp/rk-deb
-            binary=$(find /tmp/rk-deb -type f -name RainbowKeyboard | head -n 1)
-            test -n "$binary"
+            binary=$(find /tmp/rk-deb -type f \( -name 'RainbowKeyboard' -o -name 'RainbowKeyboard.dylib' \) | head -n 1)
+            if [ -z "$binary" ]; then
+              echo "Binary not found; package contents:"
+              find /tmp/rk-deb -type f -print
+              exit 1
+            fi
             lipo -archs "$binary"
-            lipo -archs "$binary" | grep -q arm64
-            lipo -archs "$binary" | grep -q arm64e
+            arches=$(lipo -archs "$binary")
+            echo "Architectures: $arches"
+            echo "$arches" | grep -qw arm64
+            echo "$arches" | grep -qw arm64e
           done
 
       - name: Upload DEB packages
