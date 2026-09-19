@@ -3,7 +3,6 @@ include $(THEOS)/makefiles/common.mk
 BUNDLE_NAME := RainbowKeyboardPrefs
 RainbowKeyboardPrefs_FILES := RKBRootListController.m
 RainbowKeyboardPrefs_FRAMEWORKS := UIKit
-RainbowKeyboardPrefs_PRIVATE_FRAMEWORKS := Preferences
 RainbowKeyboardPrefs_INSTALL_PATH := /Library/PreferenceBundles
 RainbowKeyboardPrefs_CFLAGS := -fobjc-arc
 
