@@ -1,0 +1,11 @@
+{
+    Enabled = 1;
+    Mode = 0;
+    Speed = 0.45;
+    Brightness = 0.85;
+    Opacity = 0.72;
+    RippleEnabled = 1;
+    RippleDuration = 0.42;
+    NativeKeyboard = 1;
+    WeChatKeyboard = 1;
+}
