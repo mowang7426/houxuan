@@ -1,5 +1,6 @@
 TARGET := iphone:clang:latest:15.0
-ARCHS := arm64 arm64e
+# arm64e 设备兼容 arm64；避免转换工具拆成不可安装的 arm64e 包
+ARCHS := arm64
 
 include $(THEOS)/makefiles/common.mk
 
