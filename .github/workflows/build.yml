@@ -49,14 +49,18 @@ jobs:
           test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
           echo "Theos and SDK are ready"
 
-      - name: Verify project files
+      - name: Verify and normalize package metadata
         run: |
           set -e
           test -f Makefile
           test -f control
           test -f RainbowKeyboard.plist
           test -f RainbowKeyboardPrefs/Makefile
-          grep -E '^(Package|Name|Version|Depends):' control
+          # Debian package architecture is one value; binary architectures are set by ARCHS.
+          sed -i '' 's/^Architecture:.*/Architecture: iphoneos-arm64/' control
+          grep -q '^Architecture: iphoneos-arm64$' control
+          grep -q '^ARCHS := arm64 arm64e$' Makefile
+          grep -E '^(Package|Name|Version|Architecture|Depends):' control
 
       - name: Build Rootless
         run: |
@@ -80,12 +84,20 @@ jobs:
           mkdir -p build
           cp "$ROOTHIDE_DEB" build/RainbowKeyboard-roothide.deb
 
-      - name: Verify preference bundle is packaged
+      - name: Verify package contents and binary architectures
         run: |
           set -e
           for deb in build/*.deb; do
             echo "===== Checking $deb ====="
             dpkg-deb -c "$deb" | grep -E 'PreferenceBundles/RainbowKeyboardPrefs\.bundle|PreferenceLoader/Preferences/RainbowKeyboardPrefs\.plist'
+            rm -rf /tmp/rk-deb
+            mkdir -p /tmp/rk-deb
+            dpkg-deb -x "$deb" /tmp/rk-deb
+            binary=$(find /tmp/rk-deb -type f -name RainbowKeyboard | head -n 1)
+            test -n "$binary"
+            lipo -archs "$binary"
+            lipo -archs "$binary" | grep -q arm64
+            lipo -archs "$binary" | grep -q arm64e
           done
 
       - name: Upload DEB packages
