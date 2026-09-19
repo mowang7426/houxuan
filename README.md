@@ -11,17 +11,35 @@
 - 中文 PreferenceLoader 设置页
 - Rootless 与 Roothide 编译目标入口
 
-## 编译环境
+## GitHub Actions 编译
 
-需要在 macOS 或已配置 Theos 的越狱开发环境执行：
+仓库已经包含完整的 GitHub Actions。Workflow 不再依赖不存在的 `theos/setup-theos` Action，而是直接 clone Theos：
+
+```text
+.github/workflows/build.yml
+```
+
+把整个 `RainbowKeyboard` 目录上传到 GitHub 仓库根目录后，进入：
+
+`Actions → Build RainbowKeyboard → Run workflow`
+
+或直接 push 到 `main` / `master` 分支。Workflow 会分别生成两个 Artifact：
+
+- `RainbowKeyboard-rootless`
+- `RainbowKeyboard-roothide`
+
+每个 Artifact 内包含对应的 `.deb` 文件。编译机使用 GitHub macOS runner，自动安装 Theos、Roothide Theos 和 iOS 15.2 SDK，不需要把编译环境打包进源码仓库。
+
+也可以在本地已配置 Theos 的环境执行：
 
 ```sh
 make clean
-make rootless   # Rootless .deb
-make roothide   # Roothide .deb
+make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+make clean
+make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
 ```
 
-若 Roothide Theos 不识别 `roothide` scheme，请使用 Relaxin 配套的 Theos 分支，并将 `THEOS_PACKAGE_SCHEME` 按其文档修改为对应 scheme。
+Roothide 版本必须使用 Relaxin / Roothide 兼容的 Theos 分支；普通 Theos 不能可靠生成 Roothide 包。
 
 ## 安装后
 

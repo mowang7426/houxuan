@@ -4,11 +4,9 @@ ARCHS := arm64 arm64e
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME := RainbowKeyboard
-RainbowKeyboard_FILES := Tweak.xm RainbowEffectView.m RKPreferences.m
+RainbowKeyboard_FILES := Tweak.xm RainbowEffectView.m
 RainbowKeyboard_CFLAGS := -fobjc-arc -Wno-deprecated-declarations
 RainbowKeyboard_FRAMEWORKS := UIKit QuartzCore
-RainbowKeyboard_PRIVATE_FRAMEWORKS := Preferences
-RainbowKeyboard_EXTRA_FRAMEWORKS := Cephei
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
