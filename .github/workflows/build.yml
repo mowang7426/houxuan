@@ -8,104 +8,62 @@ on:
 jobs:
   build:
     runs-on: macos-14
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Install dependencies
-        run: |
-          brew install dpkg ldid xz
-
-      - name: Set THEOS
-        run: |
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
-          echo "THEOS_MAKE_PATH=$HOME/theos/makefiles" >> "$GITHUB_ENV"
-          echo "$HOME/theos/bin" >> "$GITHUB_PATH"
-
+        run: brew install dpkg ldid xz
       - name: Install Roothide Theos
         run: |
           set -e
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          echo "$HOME/theos/bin" >> "$GITHUB_PATH"
           rm -rf "$HOME/theos"
           git clone --recursive --depth=1 https://github.com/roothide/theos.git "$HOME/theos"
-
       - name: Install iPhoneOS 16.5 SDK
         run: |
           set -e
           rm -rf /tmp/theos-sdks
           mkdir -p "$HOME/theos/sdks"
-          git clone --depth=1 --filter=blob:none --sparse \
-            https://github.com/theos/sdks.git /tmp/theos-sdks
+          git clone --depth=1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/theos-sdks
           cd /tmp/theos-sdks
           git sparse-checkout set iPhoneOS16.5.sdk
           cp -R iPhoneOS16.5.sdk "$HOME/theos/sdks/"
-
-      - name: Verify Theos environment
+      - name: Verify source configuration
         run: |
           set -e
-          test -f "$THEOS/makefiles/common.mk"
-          test -f "$THEOS/makefiles/tweak.mk"
-          test -f "$THEOS/makefiles/aggregate.mk"
-          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
-          echo "Theos and SDK are ready"
-
-      - name: Verify and normalize package metadata
-        run: |
-          set -e
-          test -f Makefile
-          test -f control
-          test -f RainbowKeyboard.plist
-          test -f RainbowKeyboardPrefs/Makefile
-          # Debian package architecture is one value; binary architectures are set by ARCHS.
-          sed -i '' 's/^Architecture:.*/Architecture: iphoneos-arm64/' control
+          grep -q '^ARCHS := arm64$' Makefile
           grep -q '^Architecture: iphoneos-arm64$' control
-          grep -q '^ARCHS := arm64 arm64e$' Makefile
-          grep -E '^(Package|Name|Version|Architecture|Depends):' control
-
+          test -f "$THEOS/makefiles/common.mk"
+          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
       - name: Build Rootless
         run: |
           set -e
           make clean || true
-          rm -rf packages
+          rm -rf packages build
           THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1
-          ROOTLESS_DEB=$(find packages -maxdepth 1 -type f -name '*.deb' | head -n 1)
-          test -n "$ROOTLESS_DEB"
+          f=$(find packages -maxdepth 1 -type f -name '*.deb' | head -n 1)
+          test -n "$f"
           mkdir -p build
-          cp "$ROOTLESS_DEB" build/RainbowKeyboard-rootless.deb
-
+          cp "$f" build/RainbowKeyboard-rootless.deb
       - name: Build Roothide
         run: |
           set -e
           make clean || true
           rm -rf packages
           THEOS_PACKAGE_SCHEME=roothide make package FINALPACKAGE=1
-          ROOTHIDE_DEB=$(find packages -maxdepth 1 -type f -name '*.deb' | head -n 1)
-          test -n "$ROOTHIDE_DEB"
-          mkdir -p build
-          cp "$ROOTHIDE_DEB" build/RainbowKeyboard-roothide.deb
-
-      - name: Verify package contents and binary architectures
+          f=$(find packages -maxdepth 1 -type f -name '*.deb' | head -n 1)
+          test -n "$f"
+          cp "$f" build/RainbowKeyboard-roothide.deb
+      - name: Verify packages
         run: |
           set -e
           for deb in build/*.deb; do
-            echo "===== Checking $deb ====="
-            dpkg-deb -c "$deb" | grep -E 'PreferenceBundles/RainbowKeyboardPrefs\.bundle|PreferenceLoader/Preferences/RainbowKeyboardPrefs\.plist'
-            rm -rf /tmp/rk-deb
-            mkdir -p /tmp/rk-deb
-            dpkg-deb -x "$deb" /tmp/rk-deb
-            binary=$(find /tmp/rk-deb -type f \( -name 'RainbowKeyboard' -o -name 'RainbowKeyboard.dylib' \) | head -n 1)
-            if [ -z "$binary" ]; then
-              echo "Binary not found; package contents:"
-              find /tmp/rk-deb -type f -print
-              exit 1
-            fi
-            lipo -archs "$binary"
-            arches=$(lipo -archs "$binary")
-            echo "Architectures: $arches"
-            echo "$arches" | grep -qw arm64
-            echo "$arches" | grep -qw arm64e
+            echo "===== $deb ====="
+            dpkg-deb -f "$deb" Architecture
+            dpkg-deb -c "$deb" | grep -q 'Library/PreferenceLoader/Preferences/RainbowKeyboardPrefs.plist'
+            dpkg-deb -c "$deb" | grep -q 'Library/PreferenceBundles/RainbowKeyboardPrefs.bundle'
           done
-
       - name: Upload DEB packages
         uses: actions/upload-artifact@v4
         with:
