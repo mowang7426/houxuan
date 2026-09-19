@@ -1,1 +1,19 @@
-{ entry = "RKBRootListController"; label = "彩虹键盘光效"; icon = "RainbowKeyboard"; }
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>entry</key>
+    <dict>
+        <key>bundle</key>
+        <string>RainbowKeyboardPrefs</string>
+        <key>cell</key>
+        <string>PSLinkCell</string>
+        <key>detail</key>
+        <string>PSListController</string>
+        <key>label</key>
+        <string>彩虹键盘光效</string>
+        <key>icon</key>
+        <string>RainbowKeyboard</string>
+    </dict>
+</dict>
+</plist>
