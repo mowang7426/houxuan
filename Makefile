@@ -7,7 +7,6 @@ TWEAK_NAME = KBGlow
 KBGlow_FILES = Tweak.xm KBGlowManager.m KBGlowView.m
 KBGlow_CFLAGS = -fobjc-arc
 KBGlow_FRAMEWORKS = UIKit QuartzCore
-KBGlow_INSTALL_TARGET_PROCESSES = SpringBoard
 
 BUNDLE_NAME = KBGlowPrefs
 KBGlowPrefs_FILES = KBGlowPrefs/RootListController.m KBGlowPrefs/ColorPickerController.m KBGlowPrefs/AnimationPickerController.m

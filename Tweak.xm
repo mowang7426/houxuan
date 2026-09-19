@@ -19,8 +19,10 @@
             UIView *touchView = touch.view;
             if (!touchView || !touchView.window) continue;
 
+            // 不再依赖第三方键盘私有类名。触摸事件已经来自
+            // KBGlow.plist 过滤的键盘进程，交给管理器统一处理。
             UIView *keyView = [mgr findKeyViewFromView:touchView];
-            if (!keyView || ![mgr isKeyView:keyView]) continue;
+            if (!keyView) keyView = touchView;
 
             CGPoint point = [touch locationInView:keyView];
             [mgr triggerGlowInView:keyView atPoint:point];

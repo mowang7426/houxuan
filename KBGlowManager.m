@@ -116,7 +116,11 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
     if ([lower containsString:@"sogou"] || [lower containsString:@"sohu"]) {
         return self.sogouEnabled;
     }
-    return NO;
+
+    // KBGlow.plist 已经限制了注入范围；部分键盘扩展的 Bundle ID
+    // 不包含厂商名称，因此不能在这里再次返回 NO，否则会完全无效果。
+    NSLog(@"[KBGlow] unknown injected bundle %@, allowing", bundleID);
+    return YES;
 }
 
 - (BOOL)isKeyView:(UIView *)view {
