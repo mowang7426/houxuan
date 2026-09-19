@@ -1,65 +1,96 @@
 name: Build RainbowKeyboard
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main, master ]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-env:
-  SDK_URL: https://github.com/theos/sdks/releases/download/15.2-2/iPhoneOS15.2.sdk.tar.xz
 
 jobs:
-  rootless:
-    name: Build Rootless deb
+  build:
     runs-on: macos-14
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install Theos
-        run: |
-          git clone --depth 1 https://github.com/theos/theos.git "$HOME/theos"
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
-      - name: Install iOS SDK
-        run: |
-          set -e
-          mkdir -p "$HOME/theos/sdks"
-          curl -fL --retry 5 --retry-delay 5 --retry-all-errors \
-            -o "$RUNNER_TEMP/iPhoneOS15.2.sdk.tar.xz" "$SDK_URL"
-          tar -xJf "$RUNNER_TEMP/iPhoneOS15.2.sdk.tar.xz" -C "$HOME/theos/sdks"
-      - name: Build Rootless package
-        run: make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
-      - name: Upload Rootless deb
-        uses: actions/upload-artifact@v4
-        with:
-          name: RainbowKeyboard-rootless
-          path: packages/*.deb
-          if-no-files-found: error
 
-  roothide:
-    name: Build Roothide deb
-    runs-on: macos-14
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install dpkg ldid xz
+
+      - name: Set THEOS
+        run: |
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          echo "THEOS_MAKE_PATH=$HOME/theos/makefiles" >> "$GITHUB_ENV"
+          echo "$HOME/theos/bin" >> "$GITHUB_PATH"
+
       - name: Install Roothide Theos
         run: |
-          git clone --depth 1 https://github.com/roothide/theos.git "$HOME/theos"
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
-      - name: Install iOS SDK
+          set -e
+          rm -rf "$HOME/theos"
+          git clone --recursive --depth=1 https://github.com/roothide/theos.git "$HOME/theos"
+
+      - name: Install iPhoneOS 16.5 SDK
         run: |
           set -e
+          rm -rf /tmp/theos-sdks
           mkdir -p "$HOME/theos/sdks"
-          curl -fL --retry 5 --retry-delay 5 --retry-all-errors \
-            -o "$RUNNER_TEMP/iPhoneOS15.2.sdk.tar.xz" "$SDK_URL"
-          tar -xJf "$RUNNER_TEMP/iPhoneOS15.2.sdk.tar.xz" -C "$HOME/theos/sdks"
-      - name: Build Roothide package
-        run: make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
-      - name: Upload Roothide deb
+          git clone --depth=1 --filter=blob:none --sparse \
+            https://github.com/theos/sdks.git /tmp/theos-sdks
+          cd /tmp/theos-sdks
+          git sparse-checkout set iPhoneOS16.5.sdk
+          cp -R iPhoneOS16.5.sdk "$HOME/theos/sdks/"
+
+      - name: Verify Theos environment
+        run: |
+          set -e
+          test -f "$THEOS/makefiles/common.mk"
+          test -f "$THEOS/makefiles/tweak.mk"
+          test -f "$THEOS/makefiles/aggregate.mk"
+          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
+          echo "Theos and SDK are ready"
+
+      - name: Verify project files
+        run: |
+          set -e
+          test -f Makefile
+          test -f control
+          test -f RainbowKeyboard.plist
+          test -f RainbowKeyboardPrefs/Makefile
+          grep -E '^(Package|Name|Version|Depends):' control
+
+      - name: Build Rootless
+        run: |
+          set -e
+          make clean || true
+          rm -rf packages
+          THEOS_PACKAGE_SCHEME=rootless make package FINALPACKAGE=1
+          ROOTLESS_DEB=$(find packages -maxdepth 1 -type f -name '*.deb' | head -n 1)
+          test -n "$ROOTLESS_DEB"
+          mkdir -p build
+          cp "$ROOTLESS_DEB" build/RainbowKeyboard-rootless.deb
+
+      - name: Build Roothide
+        run: |
+          set -e
+          make clean || true
+          rm -rf packages
+          THEOS_PACKAGE_SCHEME=roothide make package FINALPACKAGE=1
+          ROOTHIDE_DEB=$(find packages -maxdepth 1 -type f -name '*.deb' | head -n 1)
+          test -n "$ROOTHIDE_DEB"
+          mkdir -p build
+          cp "$ROOTHIDE_DEB" build/RainbowKeyboard-roothide.deb
+
+      - name: Verify preference bundle is packaged
+        run: |
+          set -e
+          for deb in build/*.deb; do
+            echo "===== Checking $deb ====="
+            dpkg-deb -c "$deb" | grep -E 'PreferenceBundles/RainbowKeyboardPrefs\.bundle|PreferenceLoader/Preferences/RainbowKeyboardPrefs\.plist'
+          done
+
+      - name: Upload DEB packages
         uses: actions/upload-artifact@v4
         with:
-          name: RainbowKeyboard-roothide
-          path: packages/*.deb
+          name: RainbowKeyboard-debs
+          path: build/*.deb
           if-no-files-found: error
