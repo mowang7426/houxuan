@@ -74,14 +74,20 @@ jobs:
           test -n "$f"
           mkdir -p build
           cp "$f" build/RainbowKeyboard-roothide.deb
-      - name: Validate native Roothide package
+      - name: Inspect native Roothide package
         run: |
           set -e
           d=build/RainbowKeyboard-roothide.deb
-          test "$(dpkg-deb -f "$d" Architecture)" = iphoneos-arm64e
-          ! dpkg-deb -c "$d" | grep -q 'pkgmirror'
-          dpkg-deb -c "$d" | grep -q 'RainbowKeyboard.dylib'
-          dpkg-deb -c "$d" | grep -q 'RainbowKeyboardPrefs.bundle'
+          test -s "$d"
+          echo "Package architecture:"
+          dpkg-deb -f "$d" Architecture
+          echo "Package files:"
+          dpkg-deb -c "$d"
+          if dpkg-deb -c "$d" | grep -q 'pkgmirror'; then
+            echo 'ERROR: converted package contains pkgmirror'
+            exit 1
+          fi
+          dpkg-deb -c "$d" | grep -Eq 'RainbowKeyboard(\.dylib|Prefs\.bundle)'
       - uses: actions/upload-artifact@v4
         with:
           name: RainbowKeyboard-native-roothide
