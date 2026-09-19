@@ -1,8 +1,12 @@
 #import <UIKit/UIKit.h>
 
+// 只声明运行时由 Preferences.framework 提供的类，不参与链接，避免 SDK 缺少私有框架。
+@interface PSListController : UITableViewController
+@end
+
 static NSString * const RKPrefsPath = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
 
-@interface RKBRootListController : UITableViewController
+@interface RKBRootListController : PSListController
 @property(nonatomic,strong) UISwitch *enabledSwitch;
 @property(nonatomic,strong) UISwitch *rippleSwitch;
 @property(nonatomic,strong) UISwitch *nativeSwitch;
