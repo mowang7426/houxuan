@@ -1,120 +1,60 @@
-name: Build KBGlow Rootless and RootHide
+name: Build RainbowKeyboard
 
 on:
+  push:
+    branches: [ main, master ]
   workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: macos-14
+permissions:
+  contents: read
 
+jobs:
+  rootless:
+    name: Build Rootless deb
+    runs-on: macos-13
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install build dependencies
+      - name: Install Theos
+        uses: theos/setup-theos@v0.1.0
+        with:
+          theos-src: theos/theos
+      - name: Install iOS SDK
         run: |
-          set -euo pipefail
-          brew update
-          brew install make dpkg ldid xz perl
-          echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
-          echo "$(brew --prefix perl)/bin" >> "$GITHUB_PATH"
-
-      - name: Set Theos
-        run: |
-          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
-          echo "$HOME/theos/bin" >> "$GITHUB_PATH"
-
-      - name: Install RootHide Theos
-        run: |
-          set -euo pipefail
-          rm -rf "$HOME/theos"
-          git clone --depth=1 --recursive https://github.com/roothide/theos.git "$HOME/theos"
-
-      - name: Install iPhoneOS SDK
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/theos-sdks
-          mkdir -p "$HOME/theos/sdks"
-          git clone --depth=1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/theos-sdks
-          cd /tmp/theos-sdks
-          git sparse-checkout set iPhoneOS16.5.sdk
-          cp -R iPhoneOS16.5.sdk "$HOME/theos/sdks/"
-          test -f "$HOME/theos/sdks/iPhoneOS16.5.sdk/usr/include/Availability.h"
-
-      - name: Verify Theos environment
-        run: |
-          set -euo pipefail
-          test -f "$THEOS/makefiles/common.mk"
-          test -f "$THEOS/makefiles/tweak.mk"
-          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
-
-      - name: Locate project
-        run: |
-          set -euo pipefail
-          PROJECT_DIR="$(dirname "$(find . -type f -name Makefile -not -path './.git/*' -print -quit)")"
-          test -n "$PROJECT_DIR"
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Using project directory: $PROJECT_DIR"
-
-      - name: Verify source
-        run: |
-          set -euo pipefail
-          cd "$PROJECT_DIR"
-          for f in Makefile Tweak.xm control KBGlow.plist KBGlowPrefs/Info.plist KBGlowPrefs/RootListController.m KBGlowPrefs/ColorPickerController.m; do
-            test -f "$f"
-          done
-          grep -E '^(Package|Name|Version|Depends):' control
-          grep -q 'iphone:clang:16.5' Makefile
-
-      - name: Prepare build directory
-        run: |
-          set -euo pipefail
-          rm -rf build
-          mkdir -p build
-
-      - name: Build Rootless
-        run: |
-          set -euo pipefail
-          cd "$PROJECT_DIR"
-          rm -rf packages .theos
-          THEOS_PACKAGE_SCHEME=rootless make clean package FINALPACKAGE=1
-          DEB="$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)"
-          test -n "$DEB"
-          cp "$DEB" "$GITHUB_WORKSPACE/build/KBGlow-rootless.deb"
-
-      - name: Build RootHide
-        run: |
-          set -euo pipefail
-          cd "$PROJECT_DIR"
-          rm -rf packages .theos
-          THEOS_PACKAGE_SCHEME=roothide make clean package FINALPACKAGE=1
-          DEB="$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)"
-          test -n "$DEB"
-          cp "$DEB" "$GITHUB_WORKSPACE/build/KBGlow-roothide.deb"
-
-      - name: Verify packages
-        run: |
-          set -euo pipefail
-          count=0
-          for deb in build/*.deb; do
-            test -f "$deb"
-            count=$((count + 1))
-            echo "===== $deb ====="
-            dpkg-deb -I "$deb"
-            listing="$(mktemp)"
-            dpkg-deb -c "$deb" > "$listing"
-            cat "$listing"
-            grep -Eq 'KBGlow\.plist$' "$listing"
-            grep -Eq 'KBGlow\.dylib$' "$listing"
-            grep -q 'KBGlowPrefs.bundle' "$listing"
-            grep -q 'KBGlowPrefs.bundle/KBGlowPrefs' "$listing"
-            rm -f "$listing"
-          done
-          test "$count" -eq 2
-
-      - name: Upload DEB packages
+          curl -L --fail --retry 3 -o sdk.zip \
+            https://github.com/theos/sdks/releases/download/15.2-2/iPhoneOS15.2.sdk.tar.xz
+          mkdir -p "$THEOS/sdks"
+          tar -xJf sdk.zip -C "$THEOS/sdks"
+      - name: Build Rootless package
+        run: make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+      - name: Upload Rootless deb
         uses: actions/upload-artifact@v4
         with:
-          name: KBGlow-iOS15-17-packages
-          path: build/*.deb
+          name: RainbowKeyboard-rootless
+          path: packages/*.deb
+          if-no-files-found: error
+
+  roothide:
+    name: Build Roothide deb
+    runs-on: macos-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Roothide Theos
+        run: |
+          git clone --depth 1 https://github.com/roothide/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+      - name: Install iOS SDK
+        run: |
+          curl -L --fail --retry 3 -o sdk.tar.xz \
+            https://github.com/theos/sdks/releases/download/15.2-2/iPhoneOS15.2.sdk.tar.xz
+          mkdir -p "$HOME/theos/sdks"
+          tar -xJf sdk.tar.xz -C "$HOME/theos/sdks"
+      - name: Build Roothide package
+        run: make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=roothide
+      - name: Upload Roothide deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: RainbowKeyboard-roothide
+          path: packages/*.deb
           if-no-files-found: error
