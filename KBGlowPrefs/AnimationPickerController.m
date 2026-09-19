@@ -35,13 +35,23 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 
 - (void)setAnimationValue:(id)value specifier:(PSSpecifier *)specifier {
     if (![value respondsToSelector:@selector(boolValue)]) return;
-    if (![value boolValue]) return;
     NSString *selected = [specifier propertyForKey:@"animationKey"];
     if (!selected) return;
-    for (NSString *key in @[@"animRipple", @"animGlow", @"animParticle"]) {
-        CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)@([key isEqualToString:selected]), CFSTR("com.mowang.kbglow"));
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+
+    // 动画必须始终保留一个有效选项，关闭当前项时恢复为涟漪。
+    if (![value boolValue]) {
+        // 关闭任意选项后，恢复为唯一的默认动画：涟漪。
+        for (NSString *key in @[@"animRipple", @"animGlow", @"animParticle"]) {
+            [defaults setBool:NO forKey:key];
+        }
+        [defaults setBool:YES forKey:@"animRipple"];
+    } else {
+        for (NSString *key in @[@"animRipple", @"animGlow", @"animParticle"]) {
+            [defaults setBool:[key isEqualToString:selected] forKey:key];
+        }
     }
-    CFPreferencesAppSynchronize(CFSTR("com.mowang.kbglow"));
+    [defaults synchronize];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
 }
@@ -49,8 +59,8 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 - (id)readAnimationValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"animationKey"];
     if (!key) return @NO;
-    id value = (__bridge_transfer id)CFPreferencesCopyAppValue((__bridge CFStringRef)key, CFSTR("com.mowang.kbglow"));
-    if (value) return @([value boolValue]);
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+    if ([defaults objectForKey:key]) return @([defaults boolForKey:key]);
     return [key isEqualToString:@"animRipple"] ? @YES : @NO;
 }
 

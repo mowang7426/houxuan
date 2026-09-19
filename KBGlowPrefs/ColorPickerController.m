@@ -64,10 +64,11 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
     if (![value respondsToSelector:@selector(boolValue)] || ![value boolValue]) return;
     NSString *selected = [specifier propertyForKey:@"colorKey"];
     if (!selected) return;
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
     NSArray *keys = @[@"colorGreen", @"colorBlue", @"colorRed", @"colorPurple", @"colorOrange", @"colorCyan", @"colorPink", @"colorWhite"];
-    for (NSString *key in keys) CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)@([key isEqualToString:selected]), CFSTR("com.mowang.kbglow"));
-    CFPreferencesSetAppValue(CFSTR("customColor"), NULL, CFSTR("com.mowang.kbglow"));
-    CFPreferencesAppSynchronize(CFSTR("com.mowang.kbglow"));
+    for (NSString *key in keys) [defaults setBool:[key isEqualToString:selected] forKey:key];
+    [defaults removeObjectForKey:@"customColor"];
+    [defaults synchronize];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
     [self showToast:@"颜色已应用"];
@@ -76,37 +77,36 @@ static CFStringRef const kNotify = CFSTR("com.mowang.kbglow.settingsChanged");
 - (id)readPresetValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"colorKey"];
     if (!key) return @NO;
-    id value = (__bridge_transfer id)CFPreferencesCopyAppValue((__bridge CFStringRef)key, CFSTR("com.mowang.kbglow"));
-    if (value) return @([value boolValue]);
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+    if ([defaults objectForKey:key]) return @([defaults boolForKey:key]);
     return [key isEqualToString:@"colorGreen"] ? @YES : @NO;
 }
 
 - (void)setCustomValue:(id)value specifier:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key) return;
-    CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)value, CFSTR("com.mowang.kbglow"));
-    CFPreferencesAppSynchronize(CFSTR("com.mowang.kbglow"));
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+    [defaults setObject:value forKey:key];
+    [defaults synchronize];
 }
 
 - (id)readCustomValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
-    id value = (__bridge_transfer id)CFPreferencesCopyAppValue((__bridge CFStringRef)key, CFSTR("com.mowang.kbglow"));
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+    id value = [defaults objectForKey:key];
     return value ?: [specifier propertyForKey:@"default"];
 }
 
 - (void)applyCustomColor:(PSSpecifier *)specifier {
-    id rv = (__bridge_transfer id)CFPreferencesCopyAppValue(CFSTR("customR"), CFSTR("com.mowang.kbglow"));
-    id gv = (__bridge_transfer id)CFPreferencesCopyAppValue(CFSTR("customG"), CFSTR("com.mowang.kbglow"));
-    id bv = (__bridge_transfer id)CFPreferencesCopyAppValue(CFSTR("customB"), CFSTR("com.mowang.kbglow"));
-    CGFloat r = rv ? [rv doubleValue] : 0.0;
-    CGFloat g = gv ? [gv doubleValue] : 1.0;
-    CGFloat b = bv ? [bv doubleValue] : 0.0;
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kSuite];
+    CGFloat r = [defaults objectForKey:@"customR"] ? [defaults doubleForKey:@"customR"] : 0.0;
+    CGFloat g = [defaults objectForKey:@"customG"] ? [defaults doubleForKey:@"customG"] : 1.0;
+    CGFloat b = [defaults objectForKey:@"customB"] ? [defaults doubleForKey:@"customB"] : 0.0;
     for (NSString *key in @[@"colorGreen", @"colorBlue", @"colorRed", @"colorPurple", @"colorOrange", @"colorCyan", @"colorPink", @"colorWhite"]) {
-        CFPreferencesSetAppValue((__bridge CFStringRef)key, (__bridge CFPropertyListRef)@NO, CFSTR("com.mowang.kbglow"));
+        [defaults setBool:NO forKey:key];
     }
-    NSArray *customColor = @[@(r), @(g), @(b), @1.0];
-    CFPreferencesSetAppValue(CFSTR("customColor"), (__bridge CFPropertyListRef)customColor, CFSTR("com.mowang.kbglow"));
-    CFPreferencesAppSynchronize(CFSTR("com.mowang.kbglow"));
+    [defaults setObject:@[@(r), @(g), @(b), @1.0] forKey:@"customColor"];
+    [defaults synchronize];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), kNotify, NULL, NULL, true);
     [self reloadSpecifiers];
     [self showToast:@"自定义颜色已应用"];
