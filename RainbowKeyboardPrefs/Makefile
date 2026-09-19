@@ -5,6 +5,8 @@ RainbowKeyboardPrefs_FILES := RKBRootListController.m
 RainbowKeyboardPrefs_FRAMEWORKS := UIKit
 RainbowKeyboardPrefs_INSTALL_PATH := /Library/PreferenceBundles
 RainbowKeyboardPrefs_CFLAGS := -fobjc-arc
+# PSListController 由设备上的 Preferences.framework 在运行时提供
+RainbowKeyboardPrefs_LDFLAGS := -Wl,-undefined,dynamic_lookup
 
 include $(THEOS_MAKE_PATH)/bundle.mk
 
