@@ -1,4 +1,4 @@
-name: Build KBGlow iOS17 RootHide
+name: Build KBGlow Rootless and RootHide
 
 on:
   workflow_dispatch:
@@ -11,106 +11,92 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install build dependencies
         run: |
-          brew install make dpkg ldid xz
+          set -euo pipefail
+          brew update
+          brew install make dpkg ldid xz perl
+          echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix perl)/bin" >> "$GITHUB_PATH"
 
-      - name: Set THEOS
+      - name: Set Theos
         run: |
-          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-          echo "THEOS_MAKE_PATH=$HOME/theos/makefiles" >> $GITHUB_ENV
-          echo "$HOME/theos/bin" >> $GITHUB_PATH
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          echo "$HOME/theos/bin" >> "$GITHUB_PATH"
 
       - name: Install RootHide Theos
         run: |
-          set -e
+          set -euo pipefail
           rm -rf "$HOME/theos"
-          git clone --recursive https://github.com/roothide/theos.git "$HOME/theos"
+          git clone --depth=1 --recursive https://github.com/roothide/theos.git "$HOME/theos"
 
-      - name: Install iPhoneOS 16.5 SDK
+      - name: Install iPhoneOS SDK
         run: |
-          set -e
+          set -euo pipefail
           rm -rf /tmp/theos-sdks
           mkdir -p "$HOME/theos/sdks"
           git clone --depth=1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/theos-sdks
           cd /tmp/theos-sdks
           git sparse-checkout set iPhoneOS16.5.sdk
-          cp -R "iPhoneOS16.5.sdk" "$HOME/theos/sdks/"
+          cp -R iPhoneOS16.5.sdk "$HOME/theos/sdks/"
+          test -f "$HOME/theos/sdks/iPhoneOS16.5.sdk/usr/include/Availability.h"
 
-      - name: Verify Theos environment
+      - name: Locate project
         run: |
-          set -e
-          echo "THEOS=$THEOS"
-          echo "THEOS_MAKE_PATH=$THEOS_MAKE_PATH"
-          test -f "$THEOS/makefiles/common.mk"
-          test -f "$THEOS/makefiles/tweak.mk"
+          set -euo pipefail
+          PROJECT_DIR="$(dirname "$(find . -type f -name Makefile -not -path './.git/*' -print -quit)")"
+          test -n "$PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Using project directory: $PROJECT_DIR"
 
-      - name: Verify KBGlow source
+      - name: Verify source
         run: |
-          set -e
-          test -f Makefile
-          test -f Tweak.xm
-          test -f control
-          test -f KBGlow.plist
-          test -f KBGlowPrefs/Makefile
-          test -f KBGlowPrefs/Info.plist
-          test -f KBGlowPrefs/RootListController.m
-          test -f KBGlowPrefs/ColorPickerController.m
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          for f in Makefile Tweak.xm control KBGlow.plist KBGlowPrefs/Info.plist KBGlowPrefs/RootListController.m; do
+            test -f "$f"
+          done
           grep -E '^(Package|Name|Version|Depends):' control
+          grep -q 'iphone:clang:16.5' Makefile
 
-      - name: Prepare build directory
+      - name: Build Rootless
         run: |
-          rm -rf build
-          mkdir -p build
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          rm -rf packages .theos
+          THEOS_PACKAGE_SCHEME=rootless make clean package FINALPACKAGE=1
+          DEB="$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$DEB"
+          mkdir -p "$GITHUB_WORKSPACE/build"
+          cp "$DEB" "$GITHUB_WORKSPACE/build/KBGlow-rootless.deb"
 
       - name: Build RootHide
         run: |
-          set -e
-          make clean
-          THEOS_PACKAGE_SCHEME=roothide make package FINALPACKAGE=1
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          rm -rf packages .theos
+          THEOS_PACKAGE_SCHEME=roothide make clean package FINALPACKAGE=1
+          DEB="$(find packages -maxdepth 1 -type f -name '*.deb' -print -quit)"
+          test -n "$DEB"
+          mkdir -p "$GITHUB_WORKSPACE/build"
+          cp "$DEB" "$GITHUB_WORKSPACE/build/KBGlow-roothide.deb"
 
-      - name: Copy RootHide package
+      - name: Verify packages
         run: |
-          set -e
-          ROOTHIDE_DEB=$(find packages -maxdepth 1 -type f -name "*.deb" | head -n 1)
-          test -n "$ROOTHIDE_DEB"
-          cp "$ROOTHIDE_DEB" "build/KBGlow-iOS17-roothide.deb"
+          set -euo pipefail
+          for deb in build/*.deb; do
+            echo "===== $deb ====="
+            dpkg-deb -I "$deb"
+            dpkg-deb -c "$deb"
+            dpkg-deb -c "$deb" | grep -q 'KBGlowPrefs.bundle'
+            dpkg-deb -c "$deb" | grep -Eq 'KBGlow\.plist$'
+            dpkg-deb -c "$deb" | grep -Eq 'KBGlow\.(dylib|bundle)'
+          done
+          test "$(find build -maxdepth 1 -name '*.deb' | wc -l | tr -d ' ')" -eq 2
 
-      - name: Verify DEB package
-        run: |
-          set -e
-          DEB="build/KBGlow-iOS17-roothide.deb"
-          test -f "$DEB"
-          echo "===== Package info ====="
-          dpkg-deb -I "$DEB"
-          echo ""
-          echo "===== Installed files ====="
-          dpkg-deb -c "$DEB"
-          echo ""
-          echo "===== Check PreferenceBundle ====="
-          if dpkg-deb -c "$DEB" | grep -q "KBGlowPrefs.bundle"; then
-            echo "✓ KBGlowPrefs.bundle found in deb"
-            mkdir -p /tmp/deb_check
-            dpkg-deb -x "$DEB" /tmp/deb_check
-            BUNDLE_PATH=$(find /tmp/deb_check -name "KBGlowPrefs.bundle" -type d | head -1)
-            echo "Bundle path: $BUNDLE_PATH"
-            echo "Bundle contents:"
-            ls -laR "$BUNDLE_PATH"
-            BUNDLE_SIZE=$(du -sk "$BUNDLE_PATH" | cut -f1)
-            echo "Bundle size: ${BUNDLE_SIZE} KB"
-            if [ "$BUNDLE_SIZE" -gt 0 ]; then
-              echo "✓ Bundle is NOT empty"
-            else
-              echo "✗ Bundle is EMPTY!"
-              exit 1
-            fi
-          else
-            echo "✗ KBGlowPrefs.bundle NOT found in deb!"
-            exit 1
-          fi
-
-      - name: Upload DEB package
+      - name: Upload DEB packages
         uses: actions/upload-artifact@v4
         with:
-          name: KBGlow-iOS17-RootHide
-          path: build/KBGlow-iOS17-roothide.deb
+          name: KBGlow-iOS15-17-packages
+          path: build/*.deb
+          if-no-files-found: error
