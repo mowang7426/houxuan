@@ -4,20 +4,6 @@
 static NSString *const kKBGlowDomain = @"com.mowang.kbglow";
 static CFStringRef const kKBGlowDarwinNotification = CFSTR("com.mowang.kbglow.settingsChanged");
 
-static id KBGlowCopyPreference(NSString *key) {
-    return (__bridge_transfer id)CFPreferencesCopyAppValue((__bridge CFStringRef)key, CFSTR("com.mowang.kbglow"));
-}
-
-static BOOL KBGlowBoolPreference(NSString *key, BOOL fallback) {
-    id value = KBGlowCopyPreference(key);
-    return value ? [value boolValue] : fallback;
-}
-
-static double KBGlowDoublePreference(NSString *key, double fallback) {
-    id value = KBGlowCopyPreference(key);
-    return value ? [value doubleValue] : fallback;
-}
-
 static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
                                        void *observer,
                                        CFStringRef name,
@@ -67,58 +53,60 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
 }
 
 - (void)reloadSettings {
-    // 使用 CFPreferences 直接读取 app domain，确保设置面板进程和键盘扩展进程共享同一份配置。
-    self.enabled = KBGlowBoolPreference(@"enabled", YES);
+    NSUserDefaults *defaults = [[NSUserDefaults alloc] initWithSuiteName:kKBGlowDomain];
 
-    // 保持 v1.0.3 原有动画选择逻辑，只修复跨进程读取。
-    if (KBGlowBoolPreference(@"animParticle", NO)) {
+    self.enabled = [defaults objectForKey:@"enabled"] ? [defaults boolForKey:@"enabled"] : YES;
+
+    // 动画：设置页始终保证只有一个模式有效。
+    if ([defaults boolForKey:@"animParticle"]) {
         self.animationType = KBGlowAnimationTypeParticle;
-    } else if (KBGlowBoolPreference(@"animGlow", NO)) {
+    } else if ([defaults boolForKey:@"animGlow"]) {
         self.animationType = KBGlowAnimationTypeGlow;
     } else {
         self.animationType = KBGlowAnimationTypeRipple;
     }
 
-    self.glowSize = KBGlowDoublePreference(@"glowSize", 60.0);
-    self.glowDuration = KBGlowDoublePreference(@"glowDuration", 0.6);
-    self.glowOpacity = KBGlowDoublePreference(@"glowOpacity", 0.8);
-    self.followFinger = KBGlowBoolPreference(@"followFinger", YES);
-    self.wechatEnabled = KBGlowBoolPreference(@"wechatEnabled", YES);
-    self.baiduEnabled = KBGlowBoolPreference(@"baiduEnabled", YES);
-    self.sogouEnabled = KBGlowBoolPreference(@"sogouEnabled", YES);
+    self.glowSize = [defaults objectForKey:@"glowSize"] ? [defaults doubleForKey:@"glowSize"] : 60.0;
+    self.glowDuration = [defaults objectForKey:@"glowDuration"] ? [defaults doubleForKey:@"glowDuration"] : 0.6;
+    self.glowOpacity = [defaults objectForKey:@"glowOpacity"] ? [defaults doubleForKey:@"glowOpacity"] : 0.8;
+    self.followFinger = [defaults objectForKey:@"followFinger"] ? [defaults boolForKey:@"followFinger"] : YES;
+    self.wechatEnabled = [defaults objectForKey:@"wechatEnabled"] ? [defaults boolForKey:@"wechatEnabled"] : YES;
+    self.baiduEnabled = [defaults objectForKey:@"baiduEnabled"] ? [defaults boolForKey:@"baiduEnabled"] : YES;
+    self.sogouEnabled = [defaults objectForKey:@"sogouEnabled"] ? [defaults boolForKey:@"sogouEnabled"] : YES;
 
-    NSArray *custom = KBGlowCopyPreference(@"customColor");
+    NSArray *custom = [defaults objectForKey:@"customColor"];
     if ([custom isKindOfClass:[NSArray class]] && custom.count >= 3) {
         self.glowColor = [UIColor colorWithRed:[custom[0] doubleValue]
                                          green:[custom[1] doubleValue]
                                           blue:[custom[2] doubleValue]
                                          alpha:(custom.count >= 4 ? [custom[3] doubleValue] : 1.0)];
-    } else if (KBGlowBoolPreference(@"colorGreen", YES)) {
+    } else if ([defaults boolForKey:@"colorGreen"]) {
         self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-    } else if (KBGlowBoolPreference(@"colorWhite", NO)) {
+    } else if ([defaults boolForKey:@"colorWhite"]) {
         self.glowColor = [UIColor colorWithWhite:1.0 alpha:1.0];
-    } else if (KBGlowBoolPreference(@"colorPink", NO)) {
+    } else if ([defaults boolForKey:@"colorPink"]) {
         self.glowColor = [UIColor colorWithRed:1.0 green:0.4 blue:0.7 alpha:1.0];
-    } else if (KBGlowBoolPreference(@"colorCyan", NO)) {
+    } else if ([defaults boolForKey:@"colorCyan"]) {
         self.glowColor = [UIColor colorWithRed:0.0 green:0.9 blue:1.0 alpha:1.0];
-    } else if (KBGlowBoolPreference(@"colorOrange", NO)) {
+    } else if ([defaults boolForKey:@"colorOrange"]) {
         self.glowColor = [UIColor colorWithRed:1.0 green:0.6 blue:0.0 alpha:1.0];
-    } else if (KBGlowBoolPreference(@"colorPurple", NO)) {
+    } else if ([defaults boolForKey:@"colorPurple"]) {
         self.glowColor = [UIColor colorWithRed:0.6 green:0.2 blue:1.0 alpha:1.0];
-    } else if (KBGlowBoolPreference(@"colorRed", NO)) {
+    } else if ([defaults boolForKey:@"colorRed"]) {
         self.glowColor = [UIColor colorWithRed:1.0 green:0.2 blue:0.2 alpha:1.0];
-    } else if (KBGlowBoolPreference(@"colorBlue", NO)) {
+    } else if ([defaults boolForKey:@"colorBlue"]) {
         self.glowColor = [UIColor colorWithRed:0.0 green:0.5 blue:1.0 alpha:1.0];
     } else {
         self.glowColor = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
     }
 }
-
 - (BOOL)isCurrentKeyboardEnabled {
     if (!self.enabled) return NO;
+
     NSString *bundleID = [[NSBundle mainBundle] bundleIdentifier];
-    if (!bundleID) return NO;
-    NSString *lower = [bundleID lowercaseString];
+    if (bundleID.length == 0) return NO;
+
+    NSString *lower = bundleID.lowercaseString;
     if ([lower containsString:@"wechat"] || [lower containsString:@"wcinput"]) {
         return self.wechatEnabled;
     }
@@ -186,11 +174,18 @@ static void KBGlowDarwinSettingsChanged(CFNotificationCenterRef center,
                                        toView:container];
     }
 
+    // 同一个容器只保留一个光效视图，避免连续点击造成视图和图层堆积。
+    for (UIView *subview in [container.subviews copy]) {
+        if ([subview isKindOfClass:[KBGlowView class]]) {
+            [(KBGlowView *)subview stopAnimation];
+        }
+    }
+
     KBGlowView *glowView = [[KBGlowView alloc] initWithFrame:container.bounds];
     glowView.glowColor = self.glowColor ?: [UIColor colorWithRed:0 green:1 blue:0 alpha:1];
-    glowView.glowSize = self.glowSize;
-    glowView.glowDuration = self.glowDuration;
-    glowView.glowOpacity = self.glowOpacity;
+    glowView.glowSize = MAX(2.0, self.glowSize);
+    glowView.glowDuration = MAX(0.05, self.glowDuration);
+    glowView.glowOpacity = MIN(1.0, MAX(0.0, self.glowOpacity));
     glowView.animationType = self.animationType;
     glowView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [container addSubview:glowView];
