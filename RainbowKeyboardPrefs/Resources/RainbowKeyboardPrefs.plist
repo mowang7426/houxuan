@@ -5,11 +5,11 @@
     <key>entry</key>
     <dict>
         <key>bundle</key>
-        <string>RainbowKeyboardPrefs</string>
+        <string>RainbowKeyboardPrefs.bundle</string>
         <key>cell</key>
         <string>PSLinkCell</string>
         <key>detail</key>
-        <string>PSListController</string>
+        <string>RKBRootListController</string>
         <key>label</key>
         <string>彩虹键盘光效</string>
         <key>icon</key>
