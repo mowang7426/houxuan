@@ -9,3 +9,6 @@ RainbowKeyboard_CFLAGS := -fobjc-arc -Wno-deprecated-declarations
 RainbowKeyboard_FRAMEWORKS := UIKit QuartzCore
 
 include $(THEOS_MAKE_PATH)/tweak.mk
+
+SUBPROJECTS += RainbowKeyboardPrefs
+include $(THEOS_MAKE_PATH)/aggregate.mk
