@@ -2,7 +2,8 @@
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
 static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
-@interface RKBRootListController : PSListController
+@interface RKBRootListController : PSListController <UIColorPickerViewControllerDelegate>
+@property(nonatomic,copy) NSString *editingColorKey;
 @end
 @implementation RKBRootListController
 - (NSArray *)specifiers {
@@ -44,5 +45,41 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
     }
     [self reloadSpecifiers];
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.minis.rainbowkeyboard.changed"), NULL, NULL, YES);
+}
+
+- (void)chooseCandidateStart { [self openCandidatePicker:@"CandidateStart"]; }
+- (void)chooseCandidateEnd { [self openCandidatePicker:@"CandidateEnd"]; }
+- (void)openCandidatePicker:(NSString *)key {
+    self.editingColorKey = key;
+    UIColorPickerViewController *picker = [UIColorPickerViewController new];
+    picker.delegate = self;
+    picker.supportsAlpha = NO;
+    picker.title = [key isEqualToString:@"CandidateStart"] ? @"候选词起始颜色" : @"候选词结束颜色";
+    NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKPath];
+    id rgb = values[key];
+    if ([rgb isKindOfClass:NSArray.class] && [rgb count] == 3 &&
+        [rgb[0] isKindOfClass:NSNumber.class] && [rgb[1] isKindOfClass:NSNumber.class] && [rgb[2] isKindOfClass:NSNumber.class]) {
+        picker.selectedColor = [UIColor colorWithRed:[rgb[0] doubleValue] green:[rgb[1] doubleValue] blue:[rgb[2] doubleValue] alpha:1];
+    } else picker.selectedColor = [key isEqualToString:@"CandidateStart"] ?
+        [UIColor colorWithRed:0 green:.65 blue:1 alpha:1] : [UIColor colorWithRed:.85 green:.15 blue:1 alpha:1];
+    [self presentViewController:picker animated:YES completion:nil];
+}
+- (void)colorPickerViewControllerDidFinish:(UIColorPickerViewController *)picker {
+    CGFloat r=0,g=0,b=0,a=1;
+    NSString *key = self.editingColorKey;
+    if (!key || ![picker.selectedColor getRed:&r green:&g blue:&b alpha:&a]) return;
+    NSMutableDictionary *values = [[NSDictionary dictionaryWithContentsOfFile:RKPath] mutableCopy] ?: [NSMutableDictionary dictionary];
+    values[key] = @[@(r),@(g),@(b)];
+    BOOL saved = [values writeToFile:RKPath atomically:YES];
+    self.editingColorKey = nil;
+    [picker dismissViewControllerAnimated:YES completion:^{
+        if (!saved) {
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"颜色保存失败" message:@"请检查配置文件权限。" preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleDefault handler:nil]];
+            [self presentViewController:alert animated:YES completion:nil];
+        } else {
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.minis.rainbowkeyboard.changed"),NULL,NULL,YES);
+        }
+    }];
 }
 @end
