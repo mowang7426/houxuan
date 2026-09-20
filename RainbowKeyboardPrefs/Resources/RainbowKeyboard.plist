@@ -8,6 +8,72 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
+			<string>候选词内部渐变（测试）</string>
+			<key>footerText</key>
+			<string>仅适配已识别候选区域中的标准 UILabel。自绘候选词可能不生效。每个标签独立横向渐变；若一个标签包含多个词，则整段一起渐变。颜色选择后点完成保存。</string>
+		</dict>
+		<dict>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>key</key>
+			<string>CandidateGradient</string>
+			<key>label</key>
+			<string>启用候选词渐变</string>
+			<key>default</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>key</key>
+			<string>CandidateNative</string>
+			<key>label</key>
+			<string>原生及其他已注入进程</string>
+			<key>default</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>key</key>
+			<string>CandidateWeType</string>
+			<key>label</key>
+			<string>微信输入法进程</string>
+			<key>default</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>选择起始颜色</string>
+			<key>action</key>
+			<string>chooseCandidateStart</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>选择结束颜色</string>
+			<key>action</key>
+			<string>chooseCandidateEnd</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
 			<string>效果预设</string>
 			<key>footerText</key>
 			<string>选择预设会覆盖效果参数。手动调整后显示自定义。推荐参数不会关闭总开关。</string>
