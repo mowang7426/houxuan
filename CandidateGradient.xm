@@ -124,7 +124,7 @@ static UIColor *RKNativeColorAtIndex(NSUInteger index) {
 %hook FFLYCH
 - (void)renderCandidateWord:(id)word focusedStyle:(BOOL)focused atIndex:(NSUInteger)index {
     UIColor *color = RKNativeColorAtIndex(index);
-    if (color && [self respondsToSelector:@selector(setTextColor:)]) {
+    if (color && [(id)self respondsToSelector:@selector(setTextColor:)]) {
         ((void (*)(id, SEL, id))objc_msgSend)(self, @selector(setTextColor:), color);
     }
     %orig;
