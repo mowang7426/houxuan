@@ -42,7 +42,11 @@ jobs:
           test "$(dpkg-deb -f "$d" Architecture)" = iphoneos-arm64
           ! dpkg-deb -c "$d" | grep -q 'pkgmirror'
           dpkg-deb -c "$d" | grep -q 'RainbowKeyboard.dylib'
-          dpkg-deb -c "$d" | grep -q 'RainbowKeyboardPrefs.bundle'
+          files=$(dpkg-deb -c "$d")
+          printf '%s\n' "$files" | grep -q 'Library/PreferenceBundles/RainbowKeyboardPrefs.bundle/Info.plist'
+          printf '%s\n' "$files" | grep -q 'Library/PreferenceBundles/RainbowKeyboardPrefs.bundle/Resources/RainbowKeyboard.plist'
+          printf '%s\n' "$files" | grep -q 'Library/PreferenceLoader/Preferences/com.minis.rainbowkeyboard.prefs.plist'
+          dpkg-deb -f "$d" Depends | grep -qi 'preferenceloader'
       - uses: actions/upload-artifact@v4
         with:
           name: RainbowKeyboard-native-rootless
@@ -85,11 +89,15 @@ jobs:
           dpkg-deb -f "$d" Architecture
           echo "Package files:"
           dpkg-deb -c "$d"
-          if dpkg-deb -c "$d" | grep -q 'pkgmirror'; then
+          files=$(dpkg-deb -c "$d")
+          if printf '%s\n' "$files" | grep -q 'pkgmirror'; then
             echo 'ERROR: converted package contains pkgmirror'
             exit 1
           fi
-          dpkg-deb -c "$d" | grep -Eq 'RainbowKeyboard(\.dylib|Prefs\.bundle)'
+          printf '%s\n' "$files" | grep -q 'Library/PreferenceBundles/RainbowKeyboardPrefs.bundle/Info.plist'
+          printf '%s\n' "$files" | grep -q 'Library/PreferenceBundles/RainbowKeyboardPrefs.bundle/Resources/RainbowKeyboard.plist'
+          printf '%s\n' "$files" | grep -q 'Library/PreferenceLoader/Preferences/com.minis.rainbowkeyboard.prefs.plist'
+          dpkg-deb -f "$d" Depends | grep -qi 'preferenceloader'
       - uses: actions/upload-artifact@v4
         with:
           name: RainbowKeyboard-native-roothide
