@@ -1,10 +1,5 @@
 {
     Filter = {
-        Bundles = (
-            "com.apple.UIKit.Keyboard",
-            "com.apple.keyboardservicesd",
-            "com.tencent.inputmethod.wetype",
-            "com.tencent.wetype.keyboard"
-        );
+        Bundles = ("com.apple.UIKit");
     };
 }

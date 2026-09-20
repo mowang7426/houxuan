@@ -1,153 +1,104 @@
 #import "RainbowEffectView.h"
 #import <QuartzCore/QuartzCore.h>
 #import <math.h>
-
-static NSString * const RKPrefs = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
-static NSString * const RKChangedNotification = @"com.minis.rainbowkeyboard.changed";
-
+static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
 @interface RainbowEffectView ()
-@property(nonatomic,strong) CADisplayLink *displayLink;
-@property(nonatomic) CGFloat phase;
-@property(nonatomic,strong) NSDictionary *configuration;
-@property(nonatomic) BOOL enabled;
-@property(nonatomic) BOOL rippleEnabled;
-@property(nonatomic) CGFloat speed;
-@property(nonatomic) CGFloat brightness;
-@property(nonatomic) CGFloat opacityValue;
+@property(nonatomic,strong) NSDictionary *config;
+@property(nonatomic) CGFloat hue;
 @end
-
-static void RKPrefsChanged(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
-    RainbowEffectView *view = (__bridge RainbowEffectView *)observer;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [view reloadConfiguration];
-    });
-}
-
 @implementation RainbowEffectView
-
 - (instancetype)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
         self.userInteractionEnabled = NO;
         self.backgroundColor = UIColor.clearColor;
         self.clipsToBounds = YES;
+        self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadConfiguration) name:UIApplicationDidBecomeActiveNotification object:nil];
         [self reloadConfiguration];
-        CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),
-                                        (__bridge const void *)self,
-                                        RKPrefsChanged,
-                                        (__bridge CFStringRef)RKChangedNotification,
-                                        NULL,
-                                        CFNotificationSuspensionBehaviorDeliverImmediately);
     }
     return self;
 }
-
-- (void)dealloc {
-    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(),
-                                       (__bridge const void *)self,
-                                       (__bridge CFStringRef)RKChangedNotification,
-                                       NULL);
-    [self stopAnimation];
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }
+- (void)reloadConfiguration { self.config = [NSDictionary dictionaryWithContentsOfFile:RKPath] ?: @{}; }
+- (CGFloat)number:(NSString *)key fallback:(CGFloat)fallback low:(CGFloat)low high:(CGFloat)high {
+    id x = self.config[key];
+    CGFloat v = [x respondsToSelector:@selector(doubleValue)] ? [x doubleValue] : fallback;
+    return isfinite(v) ? MIN(high,MAX(low,v)) : fallback;
 }
-
-- (void)reloadConfiguration {
-    NSDictionary *d = [NSDictionary dictionaryWithContentsOfFile:RKPrefs] ?: @{};
-    self.configuration = d;
-    self.enabled = d[@"Enabled"] ? [d[@"Enabled"] boolValue] : YES;
-    self.rippleEnabled = d[@"RippleEnabled"] ? [d[@"RippleEnabled"] boolValue] : YES;
-    self.speed = d[@"Speed"] ? [d[@"Speed"] doubleValue] : .45;
-    self.brightness = d[@"Brightness"] ? [d[@"Brightness"] doubleValue] : .85;
-    self.opacityValue = d[@"Opacity"] ? [d[@"Opacity"] doubleValue] : .72;
-    // No permanent gradient: the effect is click-triggered only.
-    [self stopAnimation];
-}
-
-- (void)startAnimation { /* Deliberately disabled: no always-on bottom glow. */ }
-- (void)stopAnimation { [self.displayLink invalidate]; self.displayLink = nil; }
-
-- (CGFloat)valueForKey:(NSString *)key fallback:(CGFloat)value low:(CGFloat)low high:(CGFloat)high {
-    id number = self.configuration[key];
-    CGFloat result = number ? [number doubleValue] : value;
-    return isfinite(result) ? MIN(high, MAX(low, result)) : value;
-}
-
+- (BOOL)flag:(NSString *)key { return !self.config[key] || [self.config[key] boolValue]; }
 - (void)showRippleAtPoint:(CGPoint)point {
-    [self showGlowAtPoint:point keySize:CGSizeMake(44.0, 44.0)];
-}
-
-- (void)showGlowAtPoint:(CGPoint)point keySize:(CGSize)keySize {
-    [self reloadConfiguration]; // Also refresh on touch if a notification was missed.
-    NSString *bundle = NSBundle.mainBundle.bundleIdentifier.lowercaseString ?: @"";
-    BOOL weType = [bundle containsString:@"wetype"];
-    NSString *scope = weType ? @"WeChatKeyboard" : @"NativeKeyboard";
-    if (self.configuration[scope] && ![self.configuration[scope] boolValue]) return;
-    if (!self.enabled || !self.rippleEnabled) {
-        for (CALayer *layer in self.layer.sublayers.copy) [layer removeFromSuperlayer];
+    [self reloadConfiguration];
+    NSString *bid = NSBundle.mainBundle.bundleIdentifier.lowercaseString ?: @"";
+    BOOL weType = [bid containsString:@"wetype"];
+    if (![self flag:@"Enabled"] || ![self flag:@"RippleEnabled"] || ![self flag:weType ? @"WeChatKeyboard" : @"NativeKeyboard"]) {
+        for (CALayer *l in self.layer.sublayers.copy) [l removeFromSuperlayer];
         return;
     }
-
-    // Keep the candidate/suggestion strip untouched.
-    CGFloat candidateHeight = MIN(64.0, self.bounds.size.height * .18);
-    if (point.y < candidateHeight || point.y > self.bounds.size.height) return;
-
-    // This is a local key-sized glow, not a large outlined circle.
-    CGFloat diameter = MIN(MAX(keySize.width, keySize.height), 58.0);
-    diameter = MAX(diameter, 38.0);
-    CGFloat glowSize = diameter * [self valueForKey:@"Spread" fallback:1.35 low:.5 high:3];
-    CGFloat duration = [self valueForKey:@"Duration" fallback:.42 low:.15 high:1.2];
-    CGFloat alpha = [self valueForKey:@"Opacity" fallback:.45 low:0 high:1];
-    CGFloat brightness = [self valueForKey:@"Brightness" fallback:.85 low:0 high:1];
-    CGFloat softness = [self valueForKey:@"Softness" fallback:8 low:0 high:24];
-    CGFloat coreStrength = [self valueForKey:@"CoreStrength" fallback:.6 low:0 high:1];
-    NSInteger limit = (NSInteger)[self valueForKey:@"MaxEffects" fallback:4 low:1 high:8];
-    while (self.layer.sublayers.count >= (NSUInteger)(limit * 2))
-        [self.layer.sublayers.firstObject removeFromSuperlayer];
-    NSInteger mode = [self.configuration[@"ColorMode"] integerValue];
-    self.phase = fmod(self.phase + .137, 1.0);
-    CGFloat hue = mode == 1 ? [self valueForKey:@"Hue" fallback:.55 low:0 high:1] :
-        (mode == 2 ? point.x / MAX(self.bounds.size.width, 1.0) : self.phase);
-    UIColor *core = [UIColor colorWithHue:hue saturation:.45 brightness:brightness alpha:alpha * coreStrength];
-    UIColor *glow = [UIColor colorWithHue:hue saturation:.9 brightness:brightness alpha:alpha];
-
-    // A soft filled blob gives the same illuminated-key impression as the reference.
-    CALayer *light = [CALayer layer];
-    light.frame = CGRectMake(point.x - diameter / 2, point.y - diameter / 2, diameter, diameter);
-    light.cornerRadius = diameter / 2;
-    light.backgroundColor = glow.CGColor;
-    light.shadowColor = core.CGColor;
-    light.shadowOpacity = .95;
-    light.shadowRadius = softness;
-    light.shadowOffset = CGSizeZero;
-    light.opacity = 0;
-    [self.layer addSublayer:light];
-
-    // A smaller hot center appears at the instant of the key press.
-    CALayer *hot = [CALayer layer];
-    CGFloat hotSize = diameter * .28;
-    hot.frame = CGRectMake(point.x - hotSize / 2, point.y - hotSize / 2, hotSize, hotSize);
-    hot.cornerRadius = hotSize / 2;
-    hot.backgroundColor = core.CGColor;
-    hot.shadowColor = UIColor.whiteColor.CGColor;
-    hot.shadowOpacity = .8;
-    hot.shadowRadius = softness * .5;
-    hot.shadowOffset = CGSizeZero;
-    hot.opacity = 0;
-    [self.layer addSublayer:hot];
-
-    CAMediaTimingFunction *ease = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
-    CABasicAnimation *grow = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    grow.fromValue = @(.55); grow.toValue = @(glowSize / diameter); grow.duration = duration; grow.timingFunction = ease;
-    [light addAnimation:grow forKey:@"localGlowGrow"];
-    CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    fade.fromValue = @(.95); fade.toValue = @0; fade.duration = duration; fade.timingFunction = ease;
-    [light addAnimation:fade forKey:@"localGlowFade"];
-
-    CABasicAnimation *hotFade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    hotFade.fromValue = @(.95); hotFade.toValue = @0; hotFade.duration = MIN(.18, duration * .45);
-    [hot addAnimation:hotFade forKey:@"hotFade"];
-
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((duration + .05) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [light removeFromSuperlayer];
-        [hot removeFromSuperlayer];
-    });
+    CGFloat alpha = [self number:@"Opacity" fallback:.65 low:0 high:1];
+    CGFloat brightness = [self number:@"Brightness" fallback:.95 low:0 high:1];
+    CGFloat duration = [self number:@"Duration" fallback:.55 low:.15 high:1.2];
+    CGFloat spread = [self number:@"Spread" fallback:2 low:.5 high:3];
+    CGFloat softness = [self number:@"Softness" fallback:8 low:0 high:24];
+    CGFloat core = [self number:@"CoreStrength" fallback:.5 low:0 high:1];
+    NSUInteger limit = (NSUInteger)[self number:@"MaxEffects" fallback:4 low:1 high:8];
+    while (self.layer.sublayers.count >= limit) [self.layer.sublayers.firstObject removeFromSuperlayer];
+    NSInteger mode = (NSInteger)[self number:@"ColorMode" fallback:0 low:0 high:2];
+    self.hue = fmod(self.hue + .137, 1);
+    CGFloat hue = mode == 1 ? [self number:@"Hue" fallback:.55 low:0 high:1] : (mode == 2 ? point.x / MAX(1,self.bounds.size.width) : self.hue);
+    CGFloat radius = MIN(160, MAX(24, self.bounds.size.width / 10.0 * spread));
+    CALayer *pulse = [CALayer layer];
+    pulse.frame = self.bounds;
+    pulse.opacity = 0; // Model state remains invisible after animation removal.
+    [self.layer addSublayer:pulse];
+    NSMutableArray *colors = [NSMutableArray array];
+    for (NSInteger i=0;i<5;i++) {
+        CGFloat h = mode == 1 ? hue : fmod(hue + i * .12, 1);
+        [colors addObject:(id)[UIColor colorWithHue:h saturation:.85 brightness:brightness alpha:1].CGColor];
+    }
+    CAGradientLayer *rainbow = [CAGradientLayer layer];
+    rainbow.frame = self.bounds;
+    rainbow.colors = colors;
+    rainbow.startPoint = CGPointMake(0,0);
+    rainbow.endPoint = CGPointMake(1,1);
+    [pulse addSublayer:rainbow];
+    CAShapeLayer *ring = [CAShapeLayer layer];
+    ring.frame = self.bounds;
+    ring.fillColor = UIColor.clearColor.CGColor;
+    ring.strokeColor = UIColor.whiteColor.CGColor;
+    ring.lineWidth = 4 + softness * .4;
+    ring.shadowColor = UIColor.whiteColor.CGColor;
+    ring.shadowOpacity = .8;
+    ring.shadowRadius = softness;
+    ring.shadowOffset = CGSizeZero;
+    UIBezierPath *start = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(point.x-3,point.y-3,6,6)];
+    UIBezierPath *end = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(point.x-radius,point.y-radius,2*radius,2*radius)];
+    ring.path = end.CGPath;
+    rainbow.mask = ring;
+    CABasicAnimation *expand = [CABasicAnimation animationWithKeyPath:@"path"];
+    expand.fromValue = (__bridge id)start.CGPath;
+    expand.toValue = (__bridge id)end.CGPath;
+    expand.duration = duration;
+    expand.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    [ring addAnimation:expand forKey:@"expand"];
+    CALayer *flash = [CALayer layer];
+    flash.frame = CGRectMake(point.x-9,point.y-9,18,18);
+    flash.cornerRadius = 9;
+    UIColor *tint = [UIColor colorWithHue:hue saturation:.5 brightness:brightness alpha:1];
+    flash.backgroundColor = tint.CGColor;
+    flash.shadowColor = tint.CGColor;
+    flash.shadowRadius = softness;
+    flash.shadowOpacity = .8;
+    flash.shadowOffset = CGSizeZero;
+    flash.opacity = 0;
+    [pulse addSublayer:flash];
+    CABasicAnimation *flashFade = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    flashFade.fromValue = @(core); flashFade.toValue = @0; flashFade.duration = MIN(.2,duration*.5);
+    [flash addAnimation:flashFade forKey:@"flash"];
+    CAKeyframeAnimation *fade = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    fade.values = @[@0,@(alpha),@(alpha*.6),@0];
+    fade.keyTimes = @[@0,@.08,@.45,@1];
+    fade.duration = duration;
+    [pulse addAnimation:fade forKey:@"fade"];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)((duration+.05)*NSEC_PER_SEC)),dispatch_get_main_queue(),^{ [pulse removeFromSuperlayer]; });
 }
 @end
