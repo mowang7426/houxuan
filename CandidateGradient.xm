@@ -8,9 +8,14 @@ static CFStringRef const RKCandidateDomain = CFSTR("com.minis.rainbowkeyboard");
 static NSDictionary *RKCandidateReadPreferences(void) {
     NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKCandidatePath];
     if (values) return values;
-    CFDictionaryRef stored = CFPreferencesCopyMultiple(NULL, RKCandidateDomain,
-        kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
-    return CFBridgingRelease(stored) ?: @{};
+    NSMutableDictionary *shared = [NSMutableDictionary dictionary];
+    for (NSString *key in @[@"CandidateGradient", @"CandidateNative", @"CandidateWeType",
+                            @"CandidateStart", @"CandidateEnd"]) {
+        id value = CFBridgingRelease(CFPreferencesCopyAppValue((__bridge CFStringRef)key,
+            RKCandidateDomain));
+        if (value) shared[key] = value;
+    }
+    return shared;
 }
 
 static BOOL RKCandidateRegion(UIView *view) {
