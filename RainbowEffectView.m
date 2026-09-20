@@ -65,92 +65,56 @@ static void RKPrefsChanged(CFNotificationCenterRef center, void *observer, CFStr
 - (void)showRippleAtPoint:(CGPoint)point {
     if (!self.enabled || !self.rippleEnabled) return;
 
-    // Ignore the candidate strip. The effect starts below it and is clipped
-    // to this view, so it cannot paint over candidate words.
+    // Keep the candidate/suggestion strip untouched.
     CGFloat candidateHeight = MIN(64.0, self.bounds.size.height * .18);
     if (point.y < candidateHeight || point.y > self.bounds.size.height) return;
 
-    CGFloat maxSide = MIN(self.bounds.size.width, self.bounds.size.height) * .42;
-    maxSide = MAX(76.0, MIN(maxSide, 190.0));
+    // This is a local key-sized glow, not a large outlined circle.
+    CGFloat keySize = MIN(self.bounds.size.width / 9.0, 58.0);
+    keySize = MAX(keySize, 38.0);
+    CGFloat glowSize = keySize * 1.35;
     CGFloat hue = fmod(self.phase + point.x / MAX(self.bounds.size.width, 1.0), 1.0);
-    UIColor *color = [UIColor colorWithHue:hue
-                               saturation:.88
-                               brightness:MAX(.45, self.brightness)
-                                    alpha:MAX(.25, self.opacityValue)];
-    UIColor *bright = [UIColor colorWithHue:hue saturation:.55 brightness:1.0 alpha:.95];
+    UIColor *core = [UIColor colorWithHue:hue saturation:.45 brightness:1.0 alpha:.95];
+    UIColor *glow = [UIColor colorWithHue:hue saturation:.9 brightness:MAX(.45, self.brightness) alpha:.55];
 
-    // 1) A bright touch flash at the exact key position.
-    CGFloat dotSize = 18.0;
-    CALayer *flash = [CALayer layer];
-    flash.frame = CGRectMake(point.x - dotSize / 2, point.y - dotSize / 2, dotSize, dotSize);
-    flash.cornerRadius = dotSize / 2;
-    flash.backgroundColor = bright.CGColor;
-    flash.shadowColor = bright.CGColor;
-    flash.shadowOpacity = .95;
-    flash.shadowRadius = 13.0;
-    flash.shadowOffset = CGSizeZero;
-    [self.layer addSublayer:flash];
+    // A soft filled blob gives the same illuminated-key impression as the reference.
+    CALayer *light = [CALayer layer];
+    light.frame = CGRectMake(point.x - keySize / 2, point.y - keySize / 2, keySize, keySize);
+    light.cornerRadius = keySize / 2;
+    light.backgroundColor = glow.CGColor;
+    light.shadowColor = core.CGColor;
+    light.shadowOpacity = .95;
+    light.shadowRadius = keySize * .42;
+    light.shadowOffset = CGSizeZero;
+    [self.layer addSublayer:light];
 
-    // 2) A soft halo grows with the water ripple.
-    CALayer *halo = [CALayer layer];
-    halo.frame = CGRectMake(point.x - 10, point.y - 10, 20, 20);
-    halo.cornerRadius = 10;
-    halo.backgroundColor = color.CGColor;
-    halo.shadowColor = bright.CGColor;
-    halo.shadowOpacity = .85;
-    halo.shadowRadius = 16.0;
-    halo.shadowOffset = CGSizeZero;
-    [self.layer addSublayer:halo];
+    // A smaller hot center appears at the instant of the key press.
+    CALayer *hot = [CALayer layer];
+    CGFloat hotSize = keySize * .28;
+    hot.frame = CGRectMake(point.x - hotSize / 2, point.y - hotSize / 2, hotSize, hotSize);
+    hot.cornerRadius = hotSize / 2;
+    hot.backgroundColor = core.CGColor;
+    hot.shadowColor = UIColor.whiteColor.CGColor;
+    hot.shadowOpacity = .8;
+    hot.shadowRadius = 6.0;
+    hot.shadowOffset = CGSizeZero;
+    [self.layer addSublayer:hot];
 
-    // 3) Two rings make the expansion look like illuminated water, not a
-    // single thin outline.
-    NSMutableArray *rings = [NSMutableArray array];
-    for (NSInteger i = 0; i < 2; i++) {
-        CAShapeLayer *ring = [CAShapeLayer layer];
-        ring.fillColor = UIColor.clearColor.CGColor;
-        ring.strokeColor = (i == 0 ? bright : color).CGColor;
-        ring.lineWidth = (i == 0 ? 2.8 : 6.0);
-        ring.shadowColor = bright.CGColor;
-        ring.shadowOpacity = (i == 0 ? .9 : .55);
-        ring.shadowRadius = (i == 0 ? 8.0 : 13.0);
-        ring.shadowOffset = CGSizeZero;
-        ring.path = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(point.x - 2, point.y - 2, 4, 4)].CGPath;
-        [self.layer addSublayer:ring];
-        [rings addObject:ring];
+    CAMediaTimingFunction *ease = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    CABasicAnimation *grow = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    grow.fromValue = @(.55); grow.toValue = @(glowSize / keySize); grow.duration = .34; grow.timingFunction = ease;
+    [light addAnimation:grow forKey:@"localGlowGrow"];
+    CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    fade.fromValue = @(.95); fade.toValue = @0; fade.duration = .42; fade.timingFunction = ease;
+    [light addAnimation:fade forKey:@"localGlowFade"];
 
-        CGFloat delay = i == 0 ? 0.0 : .055;
-        CGFloat end = maxSide * (i == 0 ? .5 : .62);
-        CABasicAnimation *path = [CABasicAnimation animationWithKeyPath:@"path"];
-        path.fromValue = (id)ring.path;
-        path.toValue = (id)[UIBezierPath bezierPathWithOvalInRect:CGRectMake(point.x - end / 2, point.y - end / 2, end, end)].CGPath;
-        path.beginTime = delay;
-        path.duration = .52;
-        path.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
-        CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-        fade.fromValue = @(.95); fade.toValue = @0;
-        fade.beginTime = delay; fade.duration = .52;
-        [ring addAnimation:path forKey:@"ripplePath"];
-        [ring addAnimation:fade forKey:@"rippleFade"];
-    }
+    CABasicAnimation *hotFade = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    hotFade.fromValue = @(.95); hotFade.toValue = @0; hotFade.duration = .18;
+    [hot addAnimation:hotFade forKey:@"hotFade"];
 
-    // The flash fades quickly while the halo blooms, giving a visible click.
-    CABasicAnimation *flashFade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    flashFade.fromValue = @(.95); flashFade.toValue = @0;
-    flashFade.duration = .20;
-    [flash addAnimation:flashFade forKey:@"flashFade"];
-    CABasicAnimation *haloScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    haloScale.fromValue = @(.6); haloScale.toValue = @(maxSide / 34.0);
-    haloScale.duration = .46;
-    haloScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
-    [halo addAnimation:haloScale forKey:@"haloScale"];
-    CABasicAnimation *haloFade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    haloFade.fromValue = @(.35); haloFade.toValue = @0; haloFade.duration = .46;
-    [halo addAnimation:haloFade forKey:@"haloFade"];
-
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(.7 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [flash removeFromSuperlayer];
-        [halo removeFromSuperlayer];
-        for (CALayer *ring in rings) [ring removeFromSuperlayer];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [light removeFromSuperlayer];
+        [hot removeFromSuperlayer];
     });
 }
 @end
