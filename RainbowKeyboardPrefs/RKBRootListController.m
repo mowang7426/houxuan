@@ -21,12 +21,6 @@ static NSString * const RKChangedNotification = @"com.minis.rainbowkeyboard.chan
 // show a generic error for unsupported PS*Cell specifiers on iOS 17.
 - (NSArray *)specifiers { return @[]; }
 
-- (instancetype)init {
-    self = [super initWithStyle:UITableViewStyleInsetGrouped];
-    if (self) self.title = @"彩虹键盘光效";
-    return self;
-}
-
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = @"彩虹键盘光效";
