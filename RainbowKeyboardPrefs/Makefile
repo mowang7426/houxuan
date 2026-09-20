@@ -2,6 +2,7 @@ include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME := RainbowKeyboardPrefs
 RainbowKeyboardPrefs_FILES := RKBRootListController.m
+RainbowKeyboardPrefs_RESOURCE_FILES := Resources/RainbowKeyboard.plist
 RainbowKeyboardPrefs_FRAMEWORKS := UIKit
 RainbowKeyboardPrefs_INSTALL_PATH := /Library/PreferenceBundles
 RainbowKeyboardPrefs_CFLAGS := -fobjc-arc -Wno-deprecated-declarations
