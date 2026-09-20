@@ -11,28 +11,14 @@ static NSDictionary *RKReadPreferences(void) {
     return CFBridgingRelease(stored) ?: @{};
 }
 static BOOL RKSyncPreferences(NSDictionary *values) {
-    BOOL transportPublished = RKPublishColorState(values);
-    CFStringRef domain = CFSTR("com.minis.rainbowkeyboard");
-    for (NSString *key in values) {
-        id value = values[key];
-        CFPreferencesSetAppValue((__bridge CFStringRef)key,
-            (__bridge CFPropertyListRef)value, domain);
-    }
-    NSString *marker = NSUUID.UUID.UUIDString;
-    CFPreferencesSetAppValue(CFSTR("RKProbeMarker"), (__bridge CFStringRef)marker, domain);
-    BOOL synced = CFPreferencesAppSynchronize(domain);
-    NSMutableDictionary *readback = [NSMutableDictionary dictionary];
-    for (NSString *key in @[@"RKProbeMarker", @"CandidateGradient", @"CandidateNative", @"CandidateWeType"]) {
-        id value = CFBridgingRelease(CFPreferencesCopyAppValue((__bridge CFStringRef)key, domain));
-        readback[key] = value ?: @"unset";
-    }
-    NSDictionary *report = @{@"version":@5, @"transportPublished":@(transportPublished), @"syncReturned":@(synced),
-        @"writtenMarker":marker, @"appReadback":readback,
-        @"date":[NSDate date]};
-    NSString *path = @"/var/mobile/Library/Preferences/RainbowKeyboard-settings-probe.plist";
-    if (![report writeToFile:path atomically:YES])
-        [report writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"RainbowKeyboard-settings-probe.plist"] atomically:YES];
-    return synced;
+    // We persist only via -writeToFile: on the plist below. Writing through
+    // CFPreferences here is dangerous: CFPreferencesAppSynchronize flushes the
+    // whole in-memory dictionary back to the SAME plist file, and when the
+    // Preferences process's in-memory view is incomplete it overwrites the
+    // on-disk config with a partial one, which makes every setting jump back
+    // to its default. The keyboard process reads the plist file directly, so
+    // CFPreferences is not needed; we only re-publish the notify color state.
+    return RKPublishColorState(values);
 }
 @interface RKBRootListController : PSListController <UIColorPickerViewControllerDelegate>
 @property(nonatomic,copy) NSString *editingColorKey;
@@ -45,7 +31,7 @@ static BOOL RKSyncPreferences(NSDictionary *values) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = @"彩虹键盘光效";
-    NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKPath];
+    NSDictionary *values = RKReadPreferences();
     if (values) RKSyncPreferences(values);
 }
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
@@ -56,18 +42,22 @@ static BOOL RKSyncPreferences(NSDictionary *values) {
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     if (!key || !value) return;
-    NSMutableDictionary *values = [[NSDictionary dictionaryWithContentsOfFile:RKPath] mutableCopy] ?: [NSMutableDictionary dictionary];
+    NSMutableDictionary *values = [RKReadPreferences() mutableCopy];
     values[key] = value;
     if ([key isEqualToString:@"Preset"]) {
         NSInteger preset = [value integerValue];
         NSArray *options = @[
-            @{@"Opacity":@.4,@"Brightness":@.8,@"Duration":@.6,@"Spread":@1.5,@"Softness":@10,@"CoreStrength":@.3,@"MaxEffects":@3},
-            @{@"Opacity":@.75,@"Brightness":@1,@"Duration":@.55,@"Spread":@2.2,@"Softness":@8,@"CoreStrength":@.65,@"MaxEffects":@4},
-            @{@"Opacity":@.6,@"Brightness":@.95,@"Duration":@.25,@"Spread":@1.3,@"Softness":@5,@"CoreStrength":@.6,@"MaxEffects":@3},
-            @{@"Opacity":@.65,@"Brightness":@.95,@"Duration":@.55,@"Spread":@2,@"Softness":@8,@"CoreStrength":@.5,@"MaxEffects":@4}
+            @{@"Opacity":@.4,@"Brightness":@.8,@"NeonSaturation":@.4,@"Duration":@.6,@"Spread":@1.5,@"Softness":@10,@"CoreStrength":@.3,@"MaxEffects":@3},
+            @{@"Opacity":@.75,@"Brightness":@1,@"NeonSaturation":@1,@"Duration":@.55,@"Spread":@2.2,@"Softness":@8,@"CoreStrength":@.65,@"MaxEffects":@4},
+            @{@"Opacity":@.6,@"Brightness":@.95,@"NeonSaturation":@.72,@"Duration":@.25,@"Spread":@1.3,@"Softness":@5,@"CoreStrength":@.6,@"MaxEffects":@3},
+            @{@"Opacity":@.65,@"Brightness":@.95,@"NeonSaturation":@.72,@"Duration":@.55,@"Spread":@2,@"Softness":@8,@"CoreStrength":@.5,@"MaxEffects":@4}
         ];
         if (preset >= 0 && preset < (NSInteger)options.count) {
             [values addEntriesFromDictionary:options[preset]];
+            values[@"EffectStyle"] = @0;
+            values[@"AmbientGlow"] = @YES;
+            values[@"AmbientStrength"] = @.85;
+            values[@"PureBlackKeyboard"] = @YES;
             values[@"ColorMode"] = @0;
             values[@"BackgroundFeedback"] = @YES;
             values[@"BackgroundStrength"] = @.18;
@@ -75,8 +65,8 @@ static BOOL RKSyncPreferences(NSDictionary *values) {
         }
     } else values[@"Preset"] = @(-1);
     BOOL fileSaved = [values writeToFile:RKPath atomically:YES];
-    BOOL domainSaved = RKSyncPreferences(values);
-    if (!fileSaved && !domainSaved) {
+    BOOL notifyPublished = RKSyncPreferences(values);
+    if (!fileSaved && !notifyPublished) {
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"保存失败" message:@"配置文件未写入，请检查偏好设置目录权限。" preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleDefault handler:nil]];
         [self presentViewController:alert animated:YES completion:nil];
@@ -94,7 +84,7 @@ static BOOL RKSyncPreferences(NSDictionary *values) {
     picker.delegate = self;
     picker.supportsAlpha = NO;
     picker.title = [key isEqualToString:@"CandidateStart"] ? @"候选词起始颜色" : @"候选词结束颜色";
-    NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKPath];
+    NSDictionary *values = RKReadPreferences();
     id rgb = values[key];
     if ([rgb isKindOfClass:NSArray.class] && [rgb count] == 3 &&
         [rgb[0] isKindOfClass:NSNumber.class] && [rgb[1] isKindOfClass:NSNumber.class] && [rgb[2] isKindOfClass:NSNumber.class]) {
@@ -107,11 +97,11 @@ static BOOL RKSyncPreferences(NSDictionary *values) {
     CGFloat r=0,g=0,b=0,a=1;
     NSString *key = self.editingColorKey;
     if (!key || ![picker.selectedColor getRed:&r green:&g blue:&b alpha:&a]) return;
-    NSMutableDictionary *values = [[NSDictionary dictionaryWithContentsOfFile:RKPath] mutableCopy] ?: [NSMutableDictionary dictionary];
+    NSMutableDictionary *values = [RKReadPreferences() mutableCopy];
     values[key] = @[@(r),@(g),@(b)];
     BOOL fileSaved = [values writeToFile:RKPath atomically:YES];
-    BOOL domainSaved = RKSyncPreferences(values);
-    BOOL saved = fileSaved || domainSaved;
+    BOOL notifyPublished = RKSyncPreferences(values);
+    BOOL saved = fileSaved || notifyPublished;
     self.editingColorKey = nil;
     [picker dismissViewControllerAnimated:YES completion:^{
         if (!saved) {
