@@ -74,10 +74,42 @@ static void RKCandidateChanged(CFNotificationCenterRef center, void *observer, C
     CGGradientRelease(gradient);
 }
 %end
+// wxkb_plugin overrides UILabel's draw method on its concrete candidate label.
+%hook WBTextItemLabel
+- (void)drawTextInRect:(CGRect)rect {
+    [RKCandidateLabels addObject:(UILabel *)self];
+    if (![RKCandidatePrefs[@"CandidateGradient"] boolValue]) { %orig; return; }
+    if (!RKCandidateRegion((UIView *)self)) { %orig; return; }
+    if ([RKCandidatePrefs[@"CandidateWeType"] boolValue] == NO && RKCandidatePrefs[@"CandidateWeType"] != nil) { %orig; return; }
+    CGContextRef ctx = UIGraphicsGetCurrentContext();
+    CGRect textRect = [(UILabel *)self textRectForBounds:rect limitedToNumberOfLines:((UILabel *)self).numberOfLines];
+    if (!ctx || CGRectIsEmpty(textRect)) { %orig; return; }
+    UIColor *first = RKCandidateColor(RKCandidatePrefs[@"CandidateStart"], [UIColor colorWithRed:0 green:.65 blue:1 alpha:1]);
+    UIColor *last = RKCandidateColor(RKCandidatePrefs[@"CandidateEnd"], [UIColor colorWithRed:.85 green:.15 blue:1 alpha:1]);
+    NSArray *colors = @[(id)first.CGColor,(id)last.CGColor];
+    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+    CGGradientRef gradient = CGGradientCreateWithColors(space, (__bridge CFArrayRef)colors, NULL);
+    CGColorSpaceRelease(space);
+    if (!gradient) { %orig; return; }
+    CGContextSaveGState(ctx);
+    CGContextClipToRect(ctx, rect);
+    CGContextBeginTransparencyLayer(ctx, NULL);
+    %orig;
+    CGContextSetBlendMode(ctx, kCGBlendModeSourceIn);
+    CGContextDrawLinearGradient(ctx, gradient,
+        CGPointMake(CGRectGetMinX(textRect), CGRectGetMidY(textRect)),
+        CGPointMake(CGRectGetMaxX(textRect), CGRectGetMidY(textRect)),
+        kCGGradientDrawsBeforeStartLocation | kCGGradientDrawsAfterEndLocation);
+    CGContextEndTransparencyLayer(ctx);
+    CGContextRestoreGState(ctx);
+    CGGradientRelease(gradient);
+}
+%end
 %ctor {
     @autoreleasepool {
         RKCandidateLabels = [NSHashTable weakObjectsHashTable];
         RKCandidateReload();
+        %init;
         CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, RKCandidateChanged,
             CFSTR("com.minis.rainbowkeyboard.changed"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { RKCandidateReload(); }];
