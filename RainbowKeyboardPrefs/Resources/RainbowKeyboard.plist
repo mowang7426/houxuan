@@ -10,7 +10,7 @@
 			<key>label</key>
 			<string>点击光效</string>
 			<key>footerText</key>
-			<string>修改后松开滑块，再点击键盘测试。此版本不修复键盘视图定位。</string>
+			<string>设置保存后，下次点击键盘时读取。原生与第三方键盘的兼容性需要实机验证。</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -54,7 +54,7 @@
 			<key>label</key>
 			<string>光效不透明度</string>
 			<key>default</key>
-			<real>0.45</real>
+			<real>0.65</real>
 			<key>defaults</key>
 			<string>com.minis.rainbowkeyboard</string>
 			<key>PostNotification</key>
@@ -74,7 +74,7 @@
 			<key>label</key>
 			<string>颜色亮度</string>
 			<key>default</key>
-			<real>0.85</real>
+			<real>0.95</real>
 			<key>defaults</key>
 			<string>com.minis.rainbowkeyboard</string>
 			<key>PostNotification</key>
@@ -94,7 +94,7 @@
 			<key>label</key>
 			<string>持续时间（秒）</string>
 			<key>default</key>
-			<real>0.42</real>
+			<real>0.55</real>
 			<key>defaults</key>
 			<string>com.minis.rainbowkeyboard</string>
 			<key>PostNotification</key>
@@ -114,7 +114,7 @@
 			<key>label</key>
 			<string>扩散倍率</string>
 			<key>default</key>
-			<real>1.35</real>
+			<real>2.0</real>
 			<key>defaults</key>
 			<string>com.minis.rainbowkeyboard</string>
 			<key>PostNotification</key>
@@ -154,7 +154,7 @@
 			<key>label</key>
 			<string>中心亮点强度</string>
 			<key>default</key>
-			<real>0.6</real>
+			<real>0.5</real>
 			<key>defaults</key>
 			<string>com.minis.rainbowkeyboard</string>
 			<key>PostNotification</key>
