@@ -3,9 +3,11 @@ include $(THEOS)/makefiles/common.mk
 BUNDLE_NAME := RainbowKeyboardPrefs
 RainbowKeyboardPrefs_FILES := RKBRootListController.m
 RainbowKeyboardPrefs_FRAMEWORKS := UIKit
-RainbowKeyboardPrefs_PRIVATE_FRAMEWORKS := Preferences
 RainbowKeyboardPrefs_INSTALL_PATH := /Library/PreferenceBundles
 RainbowKeyboardPrefs_CFLAGS := -fobjc-arc -Wno-deprecated-declarations
+# Preferences.framework is private and is not shipped by the GitHub SDK used by CI.
+# The Settings app provides PSListController/PSSpecifier at runtime.
+RainbowKeyboardPrefs_LDFLAGS := -undefined dynamic_lookup
 RainbowKeyboardPrefs_PLIST := Resources/Info.plist
 RainbowKeyboardPrefs_RESOURCE_DIRS := Resources
 

@@ -1,4 +1,6 @@
 #import <UIKit/UIKit.h>
+// Preferences.framework is private and does not need to be linked into the
+// PreferenceBundle. PreferenceLoader/Preferences.app supplies these classes at runtime.
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
 
