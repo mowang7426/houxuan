@@ -5,7 +5,6 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
 @interface RainbowEffectView ()
 @property(nonatomic,strong) NSDictionary *config;
 @property(nonatomic) CGFloat hue;
-@property(nonatomic,strong) UIView *feedback;
 @end
 @implementation RainbowEffectView
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -29,8 +28,6 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
 - (BOOL)flag:(NSString *)key { return !self.config[key] || [self.config[key] boolValue]; }
 - (void)showRippleAtPoint:(CGPoint)point {
     [self reloadConfiguration];
-    [self.feedback.layer removeAllAnimations];
-    self.feedback.layer.opacity = 0;
     NSString *bid = NSBundle.mainBundle.bundleIdentifier.lowercaseString ?: @"";
     BOOL weType = [bid containsString:@"wetype"];
     if (![self flag:@"Enabled"] || ![self flag:@"RippleEnabled"] || ![self flag:weType ? @"WeChatKeyboard" : @"NativeKeyboard"]) {
@@ -48,37 +45,43 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
     NSInteger mode = (NSInteger)[self number:@"ColorMode" fallback:0 low:0 high:2];
     self.hue = fmod(self.hue + .137, 1);
     CGFloat hue = mode == 1 ? [self number:@"Hue" fallback:.55 low:0 high:1] : (mode == 2 ? point.x / MAX(1,self.bounds.size.width) : self.hue);
-    if ([self flag:@"BackgroundFeedback"] && self.superview) {
-        if (!self.feedback) {
-            self.feedback = [[UIView alloc] initWithFrame:self.superview.bounds];
-            self.feedback.userInteractionEnabled = NO;
-            self.feedback.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        }
-        UIView *host = self.superview;
-        self.feedback.frame = host.bounds;
-        [host insertSubview:self.feedback atIndex:0];
-        CAShapeLayer *sourceMask = (CAShapeLayer *)self.layer.mask;
-        if ([sourceMask isKindOfClass:CAShapeLayer.class]) {
-            CAShapeLayer *copyMask = [CAShapeLayer layer];
-            copyMask.frame = self.feedback.bounds;
-            copyMask.path = sourceMask.path;
-            copyMask.fillRule = sourceMask.fillRule;
-            self.feedback.layer.mask = copyMask;
-        }
-        self.feedback.backgroundColor = [UIColor colorWithHue:hue saturation:.75 brightness:brightness alpha:1];
-        CGFloat strength = [self number:@"BackgroundStrength" fallback:.18 low:0 high:.6];
-        CGFloat time = [self number:@"BackgroundDuration" fallback:.4 low:.1 high:1.5];
-        CAKeyframeAnimation *feedback = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
-        feedback.values = @[@0,@(strength),@0];
-        feedback.keyTimes = @[@0,@.12,@1]; feedback.duration = time;
-        self.feedback.layer.opacity = 0;
-        [self.feedback.layer addAnimation:feedback forKey:@"backgroundFeedback"];
-    }
     CGFloat radius = MIN(160, MAX(24, self.bounds.size.width / 10.0 * spread));
     CALayer *pulse = [CALayer layer];
     pulse.frame = self.bounds;
-    pulse.opacity = 0; // Model state remains invisible after animation removal.
+    pulse.opacity = 1; // Model state remains invisible after animation removal.
     [self.layer addSublayer:pulse];
+    // A wide radial band travels outward from this touch. It shares the
+    // keyboard exclusion mask and has no whole-keyboard solid background.
+    CGFloat waveTime = duration;
+    if ([self flag:@"BackgroundFeedback"]) {
+        CGFloat reach = [self number:@"BackgroundRadius" fallback:180 low:60 high:360];
+        CGFloat width = [self number:@"BackgroundBand" fallback:.55 low:.2 high:.85];
+        CGFloat strength = [self number:@"BackgroundStrength" fallback:.28 low:0 high:.6];
+        waveTime = [self number:@"BackgroundDuration" fallback:.65 low:.1 high:1.5];
+        CAGradientLayer *wave = [CAGradientLayer layer];
+        wave.type = kCAGradientLayerRadial;
+        wave.frame = CGRectMake(point.x-reach,point.y-reach,reach*2,reach*2);
+        wave.startPoint = CGPointMake(.5,.5);
+        wave.endPoint = CGPointMake(1,.5);
+        UIColor *c = [UIColor colorWithHue:hue saturation:.8 brightness:brightness alpha:1];
+        UIColor *edge = mode == 1 ? c : [UIColor colorWithHue:fmod(hue+.14,1) saturation:.85 brightness:brightness alpha:1];
+        wave.colors = @[(id)[c colorWithAlphaComponent:0].CGColor,
+                        (id)[c colorWithAlphaComponent:0].CGColor,
+                        (id)[c colorWithAlphaComponent:strength].CGColor,
+                        (id)[edge colorWithAlphaComponent:strength*.5].CGColor,
+                        (id)[edge colorWithAlphaComponent:0].CGColor];
+        wave.locations = @[@0,@(1-width),@(1-width*.55),@(1-width*.2),@1];
+        wave.opacity = 0;
+        [pulse addSublayer:wave];
+        CABasicAnimation *travel = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+        travel.fromValue = @.025; travel.toValue = @1; travel.duration = waveTime;
+        travel.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+        [wave addAnimation:travel forKey:@"travelFromTouch"];
+        CAKeyframeAnimation *waveFade = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+        waveFade.values = @[@0,@1,@.85,@0]; waveFade.keyTimes = @[@0,@.06,@.65,@1];
+        waveFade.duration = waveTime;
+        [wave addAnimation:waveFade forKey:@"waveFade"];
+    }
     NSMutableArray *colors = [NSMutableArray array];
     for (NSInteger i=0;i<5;i++) {
         CGFloat h = mode == 1 ? hue : fmod(hue + i * .12, 1);
@@ -127,7 +130,8 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
     fade.values = @[@0,@(alpha),@(alpha*.6),@0];
     fade.keyTimes = @[@0,@.08,@.45,@1];
     fade.duration = duration;
-    [pulse addAnimation:fade forKey:@"fade"];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)((duration+.05)*NSEC_PER_SEC)),dispatch_get_main_queue(),^{ [pulse removeFromSuperlayer]; });
+    rainbow.opacity = 0;
+    [rainbow addAnimation:fade forKey:@"fade"];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(int64_t)((MAX(duration,waveTime)+.05)*NSEC_PER_SEC)),dispatch_get_main_queue(),^{ [pulse removeFromSuperlayer]; });
 }
 @end
