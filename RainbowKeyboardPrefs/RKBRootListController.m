@@ -9,7 +9,7 @@
 
 - (NSArray *)specifiers {
     if (!_specifiers) {
-        _specifiers = [[self loadSpecifiersFromPlistName:@"RainbowKeyboard" target:self] retain];
+        _specifiers = [self loadSpecifiersFromPlistName:@"RainbowKeyboard" target:self];
     }
     return _specifiers;
 }
