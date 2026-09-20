@@ -6,4 +6,4 @@ Description: 三星风格彩虹键盘光效，支持原生键盘和微信输入�
 Maintainer: MoWang
 Author: MoWang
 Section: Tweaks
-Depends: mobilesubstrate
+Depends: mobilesubstrate, preferenceloader
