@@ -2,9 +2,6 @@
 #import <objc/runtime.h>
 #import "RKCandidateTransport.h"
 
-static BOOL RKNS(UIView *v, NSString *term) {
-    return [NSStringFromClass(v.class).lowercaseString containsString:term];
-}
 static NSString *RKOwner(Class cls, SEL sel) {
     for (Class c = cls; c; c = class_getSuperclass(c)) {
         unsigned int n = 0; Method *ms = class_copyMethodList(c, &n); BOOL found = NO;
