@@ -11,9 +11,26 @@ static NSDictionary *RKReadPreferences(void) {
 }
 static BOOL RKSyncPreferences(NSDictionary *values) {
     CFStringRef domain = CFSTR("com.minis.rainbowkeyboard");
-    CFPreferencesSetMultiple((__bridge CFDictionaryRef)values, NULL, domain,
-        kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
-    return CFPreferencesSynchronize(domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    for (NSString *key in values) {
+        id value = values[key];
+        CFPreferencesSetAppValue((__bridge CFStringRef)key,
+            (__bridge CFPropertyListRef)value, domain);
+    }
+    NSString *marker = NSUUID.UUID.UUIDString;
+    CFPreferencesSetAppValue(CFSTR("RKProbeMarker"), (__bridge CFStringRef)marker, domain);
+    BOOL synced = CFPreferencesAppSynchronize(domain);
+    NSMutableDictionary *readback = [NSMutableDictionary dictionary];
+    for (NSString *key in @[@"RKProbeMarker", @"CandidateGradient", @"CandidateNative", @"CandidateWeType"]) {
+        id value = CFBridgingRelease(CFPreferencesCopyAppValue((__bridge CFStringRef)key, domain));
+        readback[key] = value ?: @"unset";
+    }
+    NSDictionary *report = @{@"version":@4, @"syncReturned":@(synced),
+        @"writtenMarker":marker, @"appReadback":readback,
+        @"date":[NSDate date]};
+    NSString *path = @"/var/mobile/Library/Preferences/RainbowKeyboard-settings-probe.plist";
+    if (![report writeToFile:path atomically:YES])
+        [report writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"RainbowKeyboard-settings-probe.plist"] atomically:YES];
+    return synced;
 }
 @interface RKBRootListController : PSListController <UIColorPickerViewControllerDelegate>
 @property(nonatomic,copy) NSString *editingColorKey;
