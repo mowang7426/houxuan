@@ -4,6 +4,16 @@
 static NSUInteger RKDLabelDraws;
 static NSTimeInterval RKDLast;
 static NSString * const RKDPrefs = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
+static NSString *RKDPreferenceSource;
+static NSDictionary *RKDReadPreferences(void) {
+    NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKDPrefs];
+    if (values) { RKDPreferenceSource = @"file"; return values; }
+    CFDictionaryRef stored = CFPreferencesCopyMultiple(NULL, CFSTR("com.minis.rainbowkeyboard"),
+        kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    values = CFBridgingRelease(stored);
+    RKDPreferenceSource = values ? @"cfpreferences" : @"none";
+    return values;
+}
 static NSMutableSet *RKDClasses;
 static BOOL RKDKeyboard(UIView *v) {
     NSString *n = NSStringFromClass(v.class).lowercaseString;
@@ -80,12 +90,12 @@ static void RKDTree(UIView *v, NSMutableArray *rows, NSUInteger depth) {
         if (now-RKDLast < 4) return;
         RKDLast=now;
         NSMutableArray *rows=[NSMutableArray array]; RKDTree(root,rows,0);
-        NSDictionary *prefs=[NSDictionary dictionaryWithContentsOfFile:RKDPrefs];
+        NSDictionary *prefs=RKDReadPreferences();
         NSMutableDictionary *flags=[NSMutableDictionary dictionary];
         for (NSString *key in @[@"CandidateGradient",@"CandidateNative",@"CandidateWeType"])
             flags[key]=prefs[key] ? @([prefs[key] boolValue]) : @"unset";
         NSString *bid=NSBundle.mainBundle.bundleIdentifier ?: @"unknown";
-        NSDictionary *report=@{@"version":@2,@"candidateInterfaces":RKDInterfaces(),@"processBundle":bid,@"preferencesReadable":@(prefs!=nil),
+        NSDictionary *report=@{@"version":@3,@"preferenceSource":RKDPreferenceSource ?: @"none",@"candidateInterfaces":RKDInterfaces(),@"processBundle":bid,@"preferencesReadable":@(prefs!=nil),
             @"flags":flags,@"labelDrawCount":@(RKDLabelDraws),@"drawClasses":RKDClasses.allObjects ?: @[],@"views":rows};
         NSString *file=[NSString stringWithFormat:@"RainbowKeyboard-diagnostic-%@.plist",bid];
         NSString *path=[@"/var/mobile/Library/Preferences" stringByAppendingPathComponent:file];

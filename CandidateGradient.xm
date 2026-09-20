@@ -3,6 +3,15 @@
 static NSDictionary *RKCandidatePrefs;
 static NSHashTable<UILabel *> *RKCandidateLabels;
 static NSString * const RKCandidatePath = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
+static CFStringRef const RKCandidateDomain = CFSTR("com.minis.rainbowkeyboard");
+
+static NSDictionary *RKCandidateReadPreferences(void) {
+    NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKCandidatePath];
+    if (values) return values;
+    CFDictionaryRef stored = CFPreferencesCopyMultiple(NULL, RKCandidateDomain,
+        kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    return CFBridgingRelease(stored) ?: @{};
+}
 
 static BOOL RKCandidateRegion(UIView *view) {
     for (UIView *p = view; p; p = p.superview) {
@@ -20,7 +29,7 @@ static UIColor *RKCandidateColor(id value, UIColor *fallback) {
                             blue:MIN(1,MAX(0,[value[2] doubleValue])) alpha:1];
 }
 static void RKCandidateReload(void) {
-    RKCandidatePrefs = [NSDictionary dictionaryWithContentsOfFile:RKCandidatePath] ?: @{};
+    RKCandidatePrefs = RKCandidateReadPreferences();
     for (UILabel *label in RKCandidateLabels) [label setNeedsDisplay];
 }
 static void RKCandidateChanged(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef info) {

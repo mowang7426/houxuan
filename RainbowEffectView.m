@@ -2,6 +2,14 @@
 #import <QuartzCore/QuartzCore.h>
 #import <math.h>
 static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
+static CFStringRef const RKDomain = CFSTR("com.minis.rainbowkeyboard");
+static NSDictionary *RKReadPreferences(void) {
+    NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKPath];
+    if (values) return values;
+    CFDictionaryRef stored = CFPreferencesCopyMultiple(NULL, RKDomain,
+        kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    return CFBridgingRelease(stored) ?: @{};
+}
 @interface RainbowEffectView ()
 @property(nonatomic,strong) NSDictionary *config;
 @property(nonatomic) CGFloat hue;
@@ -19,7 +27,7 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
     return self;
 }
 - (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }
-- (void)reloadConfiguration { self.config = [NSDictionary dictionaryWithContentsOfFile:RKPath] ?: @{}; }
+- (void)reloadConfiguration { self.config = RKReadPreferences(); }
 - (CGFloat)number:(NSString *)key fallback:(CGFloat)fallback low:(CGFloat)low high:(CGFloat)high {
     id x = self.config[key];
     CGFloat v = [x respondsToSelector:@selector(doubleValue)] ? [x doubleValue] : fallback;
