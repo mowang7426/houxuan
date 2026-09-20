@@ -31,7 +31,7 @@ static BOOL RKSyncPreferences(NSDictionary *values) {
 }
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
-    NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKPath];
+    NSDictionary *values = RKReadPreferences();
     return (key ? values[key] : nil) ?: [specifier propertyForKey:@"default"];
 }
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier {
