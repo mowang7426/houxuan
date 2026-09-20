@@ -51,3 +51,8 @@ Roothide 版本必须使用 Relaxin / Roothide 兼容的 Theos 分支；普通 T
 - 第一次测试建议先只启用原生键盘；确认动画稳定后再启用微信输入法。
 - 当前实现使用通用 UIKit 视图识别，避免依赖单一私有类名，但不同 iOS 小版本仍需实机验证。
 - iOS 15–17 的 PreferenceBundle 编译需要对应 SDK 的 Preferences 私有头文件。
+
+
+## CI 验证说明
+
+GitHub Actions 会先把 `dpkg-deb -c` 的完整列表保存到文件，再执行检查，避免 `grep -q` 提前关闭管道导致 `tar: stdout: write error: Broken pipe`。该错误属于 CI 检查脚本的管道问题，不代表 `.deb` 本身损坏。
