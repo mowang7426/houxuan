@@ -5,6 +5,7 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
 @interface RainbowEffectView ()
 @property(nonatomic,strong) NSDictionary *config;
 @property(nonatomic) CGFloat hue;
+@property(nonatomic,strong) UIView *feedback;
 @end
 @implementation RainbowEffectView
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -28,6 +29,8 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
 - (BOOL)flag:(NSString *)key { return !self.config[key] || [self.config[key] boolValue]; }
 - (void)showRippleAtPoint:(CGPoint)point {
     [self reloadConfiguration];
+    [self.feedback.layer removeAllAnimations];
+    self.feedback.layer.opacity = 0;
     NSString *bid = NSBundle.mainBundle.bundleIdentifier.lowercaseString ?: @"";
     BOOL weType = [bid containsString:@"wetype"];
     if (![self flag:@"Enabled"] || ![self flag:@"RippleEnabled"] || ![self flag:weType ? @"WeChatKeyboard" : @"NativeKeyboard"]) {
@@ -45,6 +48,32 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
     NSInteger mode = (NSInteger)[self number:@"ColorMode" fallback:0 low:0 high:2];
     self.hue = fmod(self.hue + .137, 1);
     CGFloat hue = mode == 1 ? [self number:@"Hue" fallback:.55 low:0 high:1] : (mode == 2 ? point.x / MAX(1,self.bounds.size.width) : self.hue);
+    if ([self flag:@"BackgroundFeedback"] && self.superview) {
+        if (!self.feedback) {
+            self.feedback = [[UIView alloc] initWithFrame:self.superview.bounds];
+            self.feedback.userInteractionEnabled = NO;
+            self.feedback.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        }
+        UIView *host = self.superview;
+        self.feedback.frame = host.bounds;
+        [host insertSubview:self.feedback atIndex:0];
+        CAShapeLayer *sourceMask = (CAShapeLayer *)self.layer.mask;
+        if ([sourceMask isKindOfClass:CAShapeLayer.class]) {
+            CAShapeLayer *copyMask = [CAShapeLayer layer];
+            copyMask.frame = self.feedback.bounds;
+            copyMask.path = sourceMask.path;
+            copyMask.fillRule = sourceMask.fillRule;
+            self.feedback.layer.mask = copyMask;
+        }
+        self.feedback.backgroundColor = [UIColor colorWithHue:hue saturation:.75 brightness:brightness alpha:1];
+        CGFloat strength = [self number:@"BackgroundStrength" fallback:.18 low:0 high:.6];
+        CGFloat time = [self number:@"BackgroundDuration" fallback:.4 low:.1 high:1.5];
+        CAKeyframeAnimation *feedback = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+        feedback.values = @[@0,@(strength),@0];
+        feedback.keyTimes = @[@0,@.12,@1]; feedback.duration = time;
+        self.feedback.layer.opacity = 0;
+        [self.feedback.layer addAnimation:feedback forKey:@"backgroundFeedback"];
+    }
     CGFloat radius = MIN(160, MAX(24, self.bounds.size.width / 10.0 * spread));
     CALayer *pulse = [CALayer layer];
     pulse.frame = self.bounds;
