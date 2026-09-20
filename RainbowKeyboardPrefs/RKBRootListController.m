@@ -2,6 +2,19 @@
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
 static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
+static NSDictionary *RKReadPreferences(void) {
+    NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKPath];
+    if (values) return values;
+    CFDictionaryRef stored = CFPreferencesCopyMultiple(NULL, CFSTR("com.minis.rainbowkeyboard"),
+        kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    return CFBridgingRelease(stored) ?: @{};
+}
+static BOOL RKSyncPreferences(NSDictionary *values) {
+    CFStringRef domain = CFSTR("com.minis.rainbowkeyboard");
+    CFPreferencesSetMultiple((__bridge CFDictionaryRef)values, NULL, domain,
+        kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+    return CFPreferencesSynchronize(domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+}
 @interface RKBRootListController : PSListController <UIColorPickerViewControllerDelegate>
 @property(nonatomic,copy) NSString *editingColorKey;
 @end
@@ -10,7 +23,12 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
     if (!_specifiers) _specifiers = [self loadSpecifiersFromPlistName:@"RainbowKeyboard" target:self];
     return _specifiers;
 }
-- (void)viewDidLoad { [super viewDidLoad]; self.title = @"彩虹键盘光效"; }
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.title = @"彩虹键盘光效";
+    NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKPath];
+    if (values) RKSyncPreferences(values);
+}
 - (id)readPreferenceValue:(PSSpecifier *)specifier {
     NSString *key = [specifier propertyForKey:@"key"];
     NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKPath];
@@ -37,7 +55,9 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
             values[@"BackgroundDuration"] = @.4;
         }
     } else values[@"Preset"] = @(-1);
-    if (![values writeToFile:RKPath atomically:YES]) {
+    BOOL fileSaved = [values writeToFile:RKPath atomically:YES];
+    BOOL domainSaved = RKSyncPreferences(values);
+    if (!fileSaved && !domainSaved) {
         UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"保存失败" message:@"配置文件未写入，请检查偏好设置目录权限。" preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleDefault handler:nil]];
         [self presentViewController:alert animated:YES completion:nil];
@@ -70,7 +90,9 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
     if (!key || ![picker.selectedColor getRed:&r green:&g blue:&b alpha:&a]) return;
     NSMutableDictionary *values = [[NSDictionary dictionaryWithContentsOfFile:RKPath] mutableCopy] ?: [NSMutableDictionary dictionary];
     values[key] = @[@(r),@(g),@(b)];
-    BOOL saved = [values writeToFile:RKPath atomically:YES];
+    BOOL fileSaved = [values writeToFile:RKPath atomically:YES];
+    BOOL domainSaved = RKSyncPreferences(values);
+    BOOL saved = fileSaved || domainSaved;
     self.editingColorKey = nil;
     [picker dismissViewControllerAnimated:YES completion:^{
         if (!saved) {
