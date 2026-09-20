@@ -48,9 +48,9 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>点击背景反馈</string>
+			<string>触点向外扩散显色</string>
 			<key>footerText</key>
-			<string>颜色放在按键布局子视图下方；不透明键盘背景可能挡住此层。此时不要靠不断加亮补偿。</string>
+			<string>柔和彩色波带从触点向外传播，后方退色。绘制在按键布局上方，不是修改系统背景。</string>
 		</dict>
 		<dict>
 			<key>defaults</key>
@@ -62,7 +62,7 @@
 			<key>key</key>
 			<string>BackgroundFeedback</string>
 			<key>label</key>
-			<string>点击背景显色</string>
+			<string>启用扩散色带</string>
 			<key>default</key>
 			<true/>
 		</dict>
@@ -76,7 +76,7 @@
 			<key>key</key>
 			<string>BackgroundStrength</string>
 			<key>label</key>
-			<string>背景显色强度</string>
+			<string>扩散色带强度</string>
 			<key>default</key>
 			<real>0.18</real>
 			<key>min</key>
@@ -96,7 +96,7 @@
 			<key>key</key>
 			<string>BackgroundDuration</string>
 			<key>label</key>
-			<string>背景淡出时间（秒）</string>
+			<string>传播时间（秒，越大越慢）</string>
 			<key>default</key>
 			<real>0.4</real>
 			<key>min</key>
@@ -377,6 +377,52 @@
 			<string>com.minis.rainbowkeyboard</string>
 			<key>PostNotification</key>
 			<string>com.minis.rainbowkeyboard.changed</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>扩散色带范围</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>showValue</key>
+			<true/>
+			<key>key</key>
+			<string>BackgroundRadius</string>
+			<key>label</key>
+			<string>最大半径（点）</string>
+			<key>default</key>
+			<real>180.0</real>
+			<key>min</key>
+			<real>60.0</real>
+			<key>max</key>
+			<real>360.0</real>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>showValue</key>
+			<true/>
+			<key>key</key>
+			<string>BackgroundBand</string>
+			<key>label</key>
+			<string>色带宽度比例</string>
+			<key>default</key>
+			<real>0.55</real>
+			<key>min</key>
+			<real>0.2</real>
+			<key>max</key>
+			<real>0.85</real>
 		</dict>
 	</array>
 </dict>
