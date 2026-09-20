@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import <objc/message.h>
 #import "RKCandidateTransport.h"
 
 static NSDictionary *RKCandidatePrefs;
@@ -108,6 +109,28 @@ static void RKCandidateChanged(CFNotificationCenterRef center, void *observer, C
     CGGradientRelease(gradient);
 }
 %end
+static UIColor *RKNativeColorAtIndex(NSUInteger index) {
+    NSDictionary *prefs = RKCandidateReadPreferences();
+    if (![prefs[@"CandidateGradient"] boolValue] || ![prefs[@"CandidateNative"] boolValue]) return nil;
+    UIColor *start = RKCandidateColor(prefs[@"CandidateStart"], [UIColor colorWithRed:0 green:.65 blue:1 alpha:1]);
+    UIColor *end = RKCandidateColor(prefs[@"CandidateEnd"], [UIColor colorWithRed:.85 green:.15 blue:1 alpha:1]);
+    CGFloat sr = 0, sg = 0, sb = 0, sa = 0, er = 0, eg = 0, eb = 0, ea = 0;
+    if (![start getRed:&sr green:&sg blue:&sb alpha:&sa] || ![end getRed:&er green:&eg blue:&eb alpha:&ea]) return nil;
+    CGFloat ratio = MIN(1.0, (CGFloat)index / 5.0);
+    return [UIColor colorWithRed:sr + (er - sr) * ratio green:sg + (eg - sg) * ratio
+                             blue:sb + (eb - sb) * ratio alpha:sa + (ea - sa) * ratio];
+}
+
+%hook FFLYCH
+- (void)renderCandidateWord:(id)word focusedStyle:(BOOL)focused atIndex:(NSUInteger)index {
+    UIColor *color = RKNativeColorAtIndex(index);
+    if (color && [self respondsToSelector:@selector(setTextColor:)]) {
+        ((void (*)(id, SEL, id))objc_msgSend)(self, @selector(setTextColor:), color);
+    }
+    %orig;
+}
+%end
+
 %ctor {
     @autoreleasepool {
         RKCandidateLabels = [NSHashTable weakObjectsHashTable];
