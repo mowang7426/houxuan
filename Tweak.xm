@@ -28,16 +28,38 @@ static RainbowEffectView *RKEffectFor(UIView *v) {
 }
 %end
 
+static BOOL RKIsCandidateView(UIView *v) {
+    NSString *n = NSStringFromClass(v.class).lowercaseString;
+    return [n containsString:@"candidate"] || [n containsString:@"suggest"] ||
+           [n containsString:@"prediction"] || [n containsString:@"search"];
+}
+
 %hook UIApplication
 - (void)sendEvent:(UIEvent *)event {
     %orig;
     if (event.type != UIEventTypeTouches) return;
     for (UITouch *touch in event.allTouches) {
         if (touch.phase != UITouchPhaseBegan) continue;
-        UIView *v = touch.view;
-        while (v && !RKIsKeyboardView(v)) v = v.superview;
-        RainbowEffectView *e = v ? RKEffectFor(v) : nil;
-        if (e) [e showRippleAtPoint:[touch locationInView:e]];
+        UIView *key = touch.view;
+        UIView *keyboard = key;
+        while (keyboard && !RKIsKeyboardView(keyboard)) keyboard = keyboard.superview;
+        if (!keyboard || key == keyboard) continue;
+
+        // Walk only through the touched branch. Stop at the first likely
+        // candidate/suggestion view so candidate words never emit a glow.
+        UIView *cursor = key;
+        BOOL candidate = NO;
+        while (cursor && cursor != keyboard) {
+            if (RKIsCandidateView(cursor)) { candidate = YES; break; }
+            cursor = cursor.superview;
+        }
+        if (candidate) continue;
+
+        RainbowEffectView *e = RKEffectFor(keyboard);
+        if (!e) continue;
+        CGRect keyRect = [key convertRect:key.bounds toView:e];
+        CGPoint center = CGPointMake(CGRectGetMidX(keyRect), CGRectGetMidY(keyRect));
+        [e showGlowAtPoint:center keySize:keyRect.size];
     }
 }
 %end

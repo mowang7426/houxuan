@@ -63,6 +63,10 @@ static void RKPrefsChanged(CFNotificationCenterRef center, void *observer, CFStr
 - (void)stopAnimation { [self.displayLink invalidate]; self.displayLink = nil; }
 
 - (void)showRippleAtPoint:(CGPoint)point {
+    [self showGlowAtPoint:point keySize:CGSizeMake(44.0, 44.0)];
+}
+
+- (void)showGlowAtPoint:(CGPoint)point keySize:(CGSize)keySize {
     if (!self.enabled || !self.rippleEnabled) return;
 
     // Keep the candidate/suggestion strip untouched.
@@ -70,27 +74,27 @@ static void RKPrefsChanged(CFNotificationCenterRef center, void *observer, CFStr
     if (point.y < candidateHeight || point.y > self.bounds.size.height) return;
 
     // This is a local key-sized glow, not a large outlined circle.
-    CGFloat keySize = MIN(self.bounds.size.width / 9.0, 58.0);
-    keySize = MAX(keySize, 38.0);
-    CGFloat glowSize = keySize * 1.35;
+    CGFloat diameter = MIN(MAX(keySize.width, keySize.height), 58.0);
+    diameter = MAX(diameter, 38.0);
+    CGFloat glowSize = diameter * 1.35;
     CGFloat hue = fmod(self.phase + point.x / MAX(self.bounds.size.width, 1.0), 1.0);
     UIColor *core = [UIColor colorWithHue:hue saturation:.45 brightness:1.0 alpha:.95];
     UIColor *glow = [UIColor colorWithHue:hue saturation:.9 brightness:MAX(.45, self.brightness) alpha:.55];
 
     // A soft filled blob gives the same illuminated-key impression as the reference.
     CALayer *light = [CALayer layer];
-    light.frame = CGRectMake(point.x - keySize / 2, point.y - keySize / 2, keySize, keySize);
-    light.cornerRadius = keySize / 2;
+    light.frame = CGRectMake(point.x - diameter / 2, point.y - diameter / 2, diameter, diameter);
+    light.cornerRadius = diameter / 2;
     light.backgroundColor = glow.CGColor;
     light.shadowColor = core.CGColor;
     light.shadowOpacity = .95;
-    light.shadowRadius = keySize * .42;
+    light.shadowRadius = diameter * .42;
     light.shadowOffset = CGSizeZero;
     [self.layer addSublayer:light];
 
     // A smaller hot center appears at the instant of the key press.
     CALayer *hot = [CALayer layer];
-    CGFloat hotSize = keySize * .28;
+    CGFloat hotSize = diameter * .28;
     hot.frame = CGRectMake(point.x - hotSize / 2, point.y - hotSize / 2, hotSize, hotSize);
     hot.cornerRadius = hotSize / 2;
     hot.backgroundColor = core.CGColor;
