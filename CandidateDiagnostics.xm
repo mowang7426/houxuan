@@ -2,113 +2,65 @@
 #import <objc/runtime.h>
 #import "RKCandidateTransport.h"
 
-static NSUInteger RKDLabelDraws;
-static NSTimeInterval RKDLast;
-static NSString * const RKDPrefs = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
-static NSString *RKDPreferenceSource;
-static NSDictionary *RKDReadPreferences(void) {
-    NSDictionary *values = RKReceiveColorState();
-    if (values) { RKDPreferenceSource = @"notify-state"; return values; }
-    values = [NSDictionary dictionaryWithContentsOfFile:RKDPrefs];
-    if (values) { RKDPreferenceSource = @"file"; return values; }
-    NSMutableDictionary *shared = [NSMutableDictionary dictionary];
-    for (NSString *key in @[@"CandidateGradient", @"CandidateNative", @"CandidateWeType", @"CandidateStart", @"CandidateEnd", @"RKProbeMarker"]) {
-        id value = CFBridgingRelease(CFPreferencesCopyAppValue((__bridge CFStringRef)key,
-            CFSTR("com.minis.rainbowkeyboard")));
-        if (value) shared[key] = value;
-    }
-    RKDPreferenceSource = shared.count ? @"cfpreferences" : @"none";
-    return shared;
+static BOOL RKNS(UIView *v, NSString *term) {
+    return [NSStringFromClass(v.class).lowercaseString containsString:term];
 }
-static NSMutableSet *RKDClasses;
-static BOOL RKDKeyboard(UIView *v) {
-    NSString *n = NSStringFromClass(v.class).lowercaseString;
-    return [n containsString:@"keyboard"] || [n containsString:@"keyplane"] || [n containsString:@"inputview"];
-}
-static NSString *RKDOwner(Class cls, SEL sel) {
+static NSString *RKOwner(Class cls, SEL sel) {
     for (Class c = cls; c; c = class_getSuperclass(c)) {
-        unsigned int count = 0;
-        Method *methods = class_copyMethodList(c, &count);
-        BOOL found = NO;
-        for (unsigned int i=0; i<count; i++) if (method_getName(methods[i]) == sel) { found=YES; break; }
-        free(methods);
-        if (found) return NSStringFromClass(c);
+        unsigned int n = 0; Method *ms = class_copyMethodList(c, &n); BOOL found = NO;
+        for (unsigned int i = 0; i < n; i++) if (method_getName(ms[i]) == sel) { found = YES; break; }
+        free(ms); if (found) return NSStringFromClass(c);
     }
     return @"none";
 }
-static NSArray *RKDInterfaces(void) {
-    unsigned int count = 0;
-    Class *classes = objc_copyClassList(&count);
-    NSMutableArray *found = [NSMutableArray array];
-    SEL selector = sel_registerName("renderCandidateWord:focusedStyle:atIndex:");
-    for (unsigned int i = 0; i < count; i++) {
-        for (int kind = 0; kind < 2; kind++) {
-            Class cls = kind ? object_getClass(classes[i]) : classes[i];
-            Method method = class_getInstanceMethod(cls, selector);
-            if (!method) continue;
-            Class parent = class_getSuperclass(cls);
-            if (parent && class_getInstanceMethod(parent, selector) == method) continue;
-            const char *types = method_getTypeEncoding(method);
-            const char *image = class_getImageName(classes[i]);
-            [found addObject:@{@"class":NSStringFromClass(classes[i]),
-                @"classMethod":@(kind == 1),
-                @"encoding":types ? [NSString stringWithUTF8String:types] : @"unknown",
-                @"image":image ? [[NSString stringWithUTF8String:image] lastPathComponent] : @"unknown"}];
-        }
+static void RKScanView(UIView *v, NSMutableArray *rows, NSUInteger depth) {
+    if (!v || depth > 16 || rows.count >= 900) return;
+    NSString *name = NSStringFromClass(v.class).lowercaseString;
+    BOOL relevant = depth < 4 || [name containsString:@"candidate"] || [name containsString:@"predict"] ||
+        [name containsString:@"suggest"] || [name containsString:@"keyboard"] || [name containsString:@"keyplane"] ||
+        [name containsString:@"label"] || [name containsString:@"text"] || [name containsString:@"table"] ||
+        [name containsString:@"cell"] || [name containsString:@"token"] || [name containsString:@"collection"];
+    if (relevant) {
+        [rows addObject:@{@"class":NSStringFromClass(v.class), @"depth":@(depth),
+            @"size":NSStringFromCGSize(v.bounds.size), @"hidden":@(v.hidden),
+            @"alpha":@(v.alpha), @"isLabel":@([v isKindOfClass:UILabel.class]),
+            @"drawRectOwner":RKOwner(v.class, @selector(drawRect:)),
+            @"drawTextOwner":RKOwner(v.class, @selector(drawTextInRect:)),
+            @"subviews":@(v.subviews.count)}];
     }
-    free(classes);
-    return found;
+    for (UIView *child in v.subviews) RKScanView(child, rows, depth + 1);
 }
-static void RKDTree(UIView *v, NSMutableArray *rows, NSUInteger depth) {
-    if (depth > 12 || rows.count >= 240) return;
-    NSString *name = NSStringFromClass(v.class);
-    if ([name isEqualToString:@"RainbowEffectView"]) return;
-    [rows addObject:@{@"class":name,@"depth":@(depth),@"size":NSStringFromCGSize(v.bounds.size),
-        @"hidden":@(v.hidden),@"isLabel":@([v isKindOfClass:UILabel.class]),
-        @"drawTextOwner":RKDOwner(v.class,@selector(drawTextInRect:)),
-        @"drawRectOwner":RKDOwner(v.class,@selector(drawRect:))}];
-    for (UIView *child in v.subviews) RKDTree(child,rows,depth+1);
-}
-%hook UILabel
-- (void)drawTextInRect:(CGRect)rect {
-    // Record class names only, restricted to keyboard-associated branches.
-    for (UIView *p=self; p; p=p.superview) {
-        if (RKDKeyboard(p)) {
-            RKDLabelDraws++;
-            if (RKDClasses.count < 80) [RKDClasses addObject:NSStringFromClass(self.class)];
-            break;
-        }
+static void RKWriteScan(void) {
+    NSMutableArray *rows = [NSMutableArray array];
+    NSArray *windows = UIApplication.sharedApplication.windows ?: @[];
+    for (UIWindow *window in windows) {
+        if (window.hidden || window.alpha <= 0.01) continue;
+        RKScanView(window, rows, 0);
     }
-    %orig;
+    NSString *bid = NSBundle.mainBundle.bundleIdentifier ?: @"unknown";
+    NSDictionary *prefs = RKReceiveColorState() ?: @{};
+    NSDictionary *report = @{@"version":@6, @"processBundle":bid,
+        @"windowCount":@(windows.count), @"visibleWindowCount":@(rows.count),
+        @"preferenceSource":RKReceiveColorState() ? @"notify-state" : @"none",
+        @"flags":@{ @"CandidateGradient":prefs[@"CandidateGradient"] ?: @"unset",
+                     @"CandidateNative":prefs[@"CandidateNative"] ?: @"unset" },
+        @"views":rows};
+    NSString *name = [NSString stringWithFormat:@"RainbowKeyboard-native-scan-%@.plist", bid];
+    NSString *path = [@"/var/mobile/Library/Preferences" stringByAppendingPathComponent:name];
+    if (![report writeToFile:path atomically:YES])
+        [report writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:name] atomically:YES];
 }
-%end
 %hook UIApplication
 - (void)sendEvent:(UIEvent *)event {
     %orig;
     if (event.type != UIEventTypeTouches) return;
     for (UITouch *touch in event.allTouches) {
         if (touch.phase != UITouchPhaseBegan) continue;
-        UIView *root = nil;
-        for (UIView *p=touch.view; p && ![p isKindOfClass:UIWindow.class]; p=p.superview)
-            if (RKDKeyboard(p)) root=p;
-        if (!root) continue;
-        NSTimeInterval now = NSProcessInfo.processInfo.systemUptime;
-        if (now-RKDLast < 4) return;
-        RKDLast=now;
-        NSMutableArray *rows=[NSMutableArray array]; RKDTree(root,rows,0);
-        NSDictionary *prefs=RKDReadPreferences();
-        NSMutableDictionary *flags=[NSMutableDictionary dictionary];
-        for (NSString *key in @[@"CandidateGradient",@"CandidateNative",@"CandidateWeType"])
-            flags[key]=prefs[key] ? @([prefs[key] boolValue]) : @"unset";
-        NSString *bid=NSBundle.mainBundle.bundleIdentifier ?: @"unknown";
-        NSDictionary *report=@{@"version":@5,@"receivedStart":prefs[@"CandidateStart"] ?: @"unset",@"receivedEnd":prefs[@"CandidateEnd"] ?: @"unset",@"probeMarker":prefs[@"RKProbeMarker"] ?: @"unset",@"keyCount":@(prefs.count),@"preferenceSource":RKDPreferenceSource ?: @"none",@"candidateInterfaces":RKDInterfaces(),@"processBundle":bid,@"preferencesReadable":@(prefs.count > 0),
-            @"flags":flags,@"labelDrawCount":@(RKDLabelDraws),@"drawClasses":RKDClasses.allObjects ?: @[],@"views":rows};
-        NSString *file=[NSString stringWithFormat:@"RainbowKeyboard-diagnostic-%@.plist",bid];
-        NSString *path=[@"/var/mobile/Library/Preferences" stringByAppendingPathComponent:file];
-        if (![report writeToFile:path atomically:YES])
-            [report writeToFile:[NSTemporaryDirectory() stringByAppendingPathComponent:file] atomically:YES];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            RKWriteScan();
+        });
         return;
     }
 }
 %end
-%ctor { @autoreleasepool { RKDClasses=[NSMutableSet set]; } }
+%ctor { @autoreleasepool { %init; } }
