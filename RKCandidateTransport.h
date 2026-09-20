@@ -1,0 +1,50 @@
+#import <Foundation/Foundation.h>
+#import <notify.h>
+#include <stdint.h>
+// Only non-sensitive display preferences are transmitted. Not a secure IPC channel.
+static int RKColorStateToken(void) {
+    static int token = -1;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        int t = -1;
+        if (notify_register_check("com.minis.rainbowkeyboard.colorstate.v1", &t) == NOTIFY_STATUS_OK) token = t;
+    });
+    return token;
+}
+static inline BOOL RKPublishColorState(NSDictionary *prefs) {
+    uint64_t state = UINT64_C(0xA7) << 56;
+    NSArray *keys = @[@"CandidateStart", @"CandidateEnd"];
+    NSArray *defaults = @[@[@0, @0.65, @1], @[@0.85, @0.15, @1]];
+    for (NSUInteger c = 0; c < 2; c++) {
+        id rgb = prefs[keys[c]];
+        if (![rgb isKindOfClass:NSArray.class] || [rgb count] != 3) rgb = defaults[c];
+        for (NSUInteger j = 0; j < 3; j++) {
+            id component = rgb[j];
+            double value = [component isKindOfClass:NSNumber.class] ? [component doubleValue] : 0;
+            uint64_t byte = (uint64_t)(MIN(1.0, MAX(0.0, value)) * 255.0 + 0.5);
+            state |= byte << ((c * 3 + j) * 8);
+        }
+    }
+    if ([prefs[@"CandidateGradient"] boolValue]) state |= UINT64_C(1) << 48;
+    if (!prefs[@"CandidateNative"] || [prefs[@"CandidateNative"] boolValue]) state |= UINT64_C(1) << 49;
+    if (!prefs[@"CandidateWeType"] || [prefs[@"CandidateWeType"] boolValue]) state |= UINT64_C(1) << 50;
+    int token = RKColorStateToken();
+    if (token < 0 || notify_set_state(token, state) != NOTIFY_STATUS_OK) return NO;
+    uint64_t check = 0;
+    if (notify_get_state(token, &check) != NOTIFY_STATUS_OK || check != state) return NO;
+    notify_post("com.minis.rainbowkeyboard.changed");
+    return YES;
+}
+static inline NSDictionary *RKReceiveColorState(void) {
+    uint64_t state = 0;
+    int token = RKColorStateToken();
+    if (token < 0 || notify_get_state(token, &state) != NOTIFY_STATUS_OK || (state >> 56) != 0xA7) return nil;
+    NSMutableArray *colors = [NSMutableArray array];
+    for (NSUInteger c = 0; c < 2; c++) {
+        NSMutableArray *rgb = [NSMutableArray array];
+        for (NSUInteger j = 0; j < 3; j++) [rgb addObject:@(((state >> ((c * 3 + j) * 8)) & 255) / 255.0)];
+        [colors addObject:rgb];
+    }
+    return @{@"CandidateGradient":@((state >> 48) & 1), @"CandidateNative":@((state >> 49) & 1),
+        @"CandidateWeType":@((state >> 50) & 1), @"CandidateStart":colors[0], @"CandidateEnd":colors[1]};
+}

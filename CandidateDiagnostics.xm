@@ -1,12 +1,15 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import "RKCandidateTransport.h"
 
 static NSUInteger RKDLabelDraws;
 static NSTimeInterval RKDLast;
 static NSString * const RKDPrefs = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
 static NSString *RKDPreferenceSource;
 static NSDictionary *RKDReadPreferences(void) {
-    NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKDPrefs];
+    NSDictionary *values = RKReceiveColorState();
+    if (values) { RKDPreferenceSource = @"notify-state"; return values; }
+    values = [NSDictionary dictionaryWithContentsOfFile:RKDPrefs];
     if (values) { RKDPreferenceSource = @"file"; return values; }
     NSMutableDictionary *shared = [NSMutableDictionary dictionary];
     for (NSString *key in @[@"CandidateGradient", @"CandidateNative", @"CandidateWeType", @"CandidateStart", @"CandidateEnd", @"RKProbeMarker"]) {
@@ -98,7 +101,7 @@ static void RKDTree(UIView *v, NSMutableArray *rows, NSUInteger depth) {
         for (NSString *key in @[@"CandidateGradient",@"CandidateNative",@"CandidateWeType"])
             flags[key]=prefs[key] ? @([prefs[key] boolValue]) : @"unset";
         NSString *bid=NSBundle.mainBundle.bundleIdentifier ?: @"unknown";
-        NSDictionary *report=@{@"version":@4,@"probeMarker":prefs[@"RKProbeMarker"] ?: @"unset",@"keyCount":@(prefs.count),@"preferenceSource":RKDPreferenceSource ?: @"none",@"candidateInterfaces":RKDInterfaces(),@"processBundle":bid,@"preferencesReadable":@(prefs.count > 0),
+        NSDictionary *report=@{@"version":@5,@"receivedStart":prefs[@"CandidateStart"] ?: @"unset",@"receivedEnd":prefs[@"CandidateEnd"] ?: @"unset",@"probeMarker":prefs[@"RKProbeMarker"] ?: @"unset",@"keyCount":@(prefs.count),@"preferenceSource":RKDPreferenceSource ?: @"none",@"candidateInterfaces":RKDInterfaces(),@"processBundle":bid,@"preferencesReadable":@(prefs.count > 0),
             @"flags":flags,@"labelDrawCount":@(RKDLabelDraws),@"drawClasses":RKDClasses.allObjects ?: @[],@"views":rows};
         NSString *file=[NSString stringWithFormat:@"RainbowKeyboard-diagnostic-%@.plist",bid];
         NSString *path=[@"/var/mobile/Library/Preferences" stringByAppendingPathComponent:file];
