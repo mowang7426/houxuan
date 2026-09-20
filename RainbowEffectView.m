@@ -48,7 +48,7 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
     CGFloat radius = MIN(160, MAX(24, self.bounds.size.width / 10.0 * spread));
     CALayer *pulse = [CALayer layer];
     pulse.frame = self.bounds;
-    pulse.opacity = 1; // Model state remains invisible after animation removal.
+    pulse.opacity = 1; // Child layers own their final transparent states.
     [self.layer addSublayer:pulse];
     // A wide radial band travels outward from this touch. It shares the
     // keyboard exclusion mask and has no whole-keyboard solid background.
@@ -62,7 +62,7 @@ static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rai
         wave.type = kCAGradientLayerRadial;
         wave.frame = CGRectMake(point.x-reach,point.y-reach,reach*2,reach*2);
         wave.startPoint = CGPointMake(.5,.5);
-        wave.endPoint = CGPointMake(1,.5);
+        wave.endPoint = CGPointMake(1,1); // Nonzero radial extent on both axes.
         UIColor *c = [UIColor colorWithHue:hue saturation:.8 brightness:brightness alpha:1];
         UIColor *edge = mode == 1 ? c : [UIColor colorWithHue:fmod(hue+.14,1) saturation:.85 brightness:brightness alpha:1];
         wave.colors = @[(id)[c colorWithAlphaComponent:0].CGColor,
