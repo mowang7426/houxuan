@@ -8,40 +8,210 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>label</key>
-			<string>三星风格彩虹键盘光效</string>
+			<string>点击光效</string>
+			<key>footerText</key>
+			<string>修改后松开滑块，再点击键盘测试。此版本不修复键盘视图定位。</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
+			<key>key</key>
+			<string>Enabled</string>
+			<key>label</key>
+			<string>启用光效</string>
 			<key>default</key>
 			<true/>
 			<key>defaults</key>
 			<string>com.minis.rainbowkeyboard</string>
-			<key>key</key>
-			<string>Enabled</string>
 			<key>PostNotification</key>
 			<string>com.minis.rainbowkeyboard.changed</string>
-			<key>label</key>
-			<string>启用光效</string>
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSListItemsCell</string>
+			<string>PSSwitchCell</string>
+			<key>key</key>
+			<string>RippleEnabled</string>
+			<key>label</key>
+			<string>点击扩散光效</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>强度与扩散</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>key</key>
+			<string>Opacity</string>
+			<key>label</key>
+			<string>光效不透明度</string>
+			<key>default</key>
+			<real>0.45</real>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>min</key>
+			<real>0.0</real>
+			<key>max</key>
+			<real>1.0</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>key</key>
+			<string>Brightness</string>
+			<key>label</key>
+			<string>颜色亮度</string>
+			<key>default</key>
+			<real>0.85</real>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>min</key>
+			<real>0.0</real>
+			<key>max</key>
+			<real>1.0</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>key</key>
+			<string>Duration</string>
+			<key>label</key>
+			<string>持续时间（秒）</string>
+			<key>default</key>
+			<real>0.42</real>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>min</key>
+			<real>0.15</real>
+			<key>max</key>
+			<real>1.2</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>key</key>
+			<string>Spread</string>
+			<key>label</key>
+			<string>扩散倍率</string>
+			<key>default</key>
+			<real>1.35</real>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>min</key>
+			<real>0.5</real>
+			<key>max</key>
+			<real>3.0</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>key</key>
+			<string>Softness</string>
+			<key>label</key>
+			<string>光晕柔度（点）</string>
+			<key>default</key>
+			<real>8.0</real>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>min</key>
+			<real>0.0</real>
+			<key>max</key>
+			<real>24.0</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>key</key>
+			<string>CoreStrength</string>
+			<key>label</key>
+			<string>中心亮点强度</string>
+			<key>default</key>
+			<real>0.6</real>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>min</key>
+			<real>0.0</real>
+			<key>max</key>
+			<real>1.0</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSliderCell</string>
+			<key>key</key>
+			<string>MaxEffects</string>
+			<key>label</key>
+			<string>同时光效上限（向下取整）</string>
+			<key>default</key>
+			<real>4.0</real>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+			<key>min</key>
+			<real>1.0</real>
+			<key>max</key>
+			<real>8.0</real>
+			<key>showValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>颜色</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSLinkListCell</string>
+			<key>detail</key>
+			<string>PSListItemsController</string>
+			<key>key</key>
+			<string>ColorMode</string>
+			<key>label</key>
+			<string>颜色模式</string>
 			<key>default</key>
 			<integer>0</integer>
 			<key>defaults</key>
 			<string>com.minis.rainbowkeyboard</string>
-			<key>key</key>
-			<string>Mode</string>
 			<key>PostNotification</key>
 			<string>com.minis.rainbowkeyboard.changed</string>
-			<key>label</key>
-			<string>光效模式</string>
 			<key>validTitles</key>
 			<array>
-				<string>动态彩虹流光</string>
-				<string>静态彩虹</string>
-				<string>呼吸光效</string>
+				<string>每次点击变色</string>
+				<string>固定颜色</string>
+				<string>按点击横向位置着色</string>
 			</array>
 			<key>validValues</key>
 			<array>
@@ -53,110 +223,58 @@
 		<dict>
 			<key>cell</key>
 			<string>PSSliderCell</string>
+			<key>key</key>
+			<string>Hue</string>
+			<key>label</key>
+			<string>固定色相（0～1）</string>
 			<key>default</key>
-			<real>0.45</real>
+			<real>0.55</real>
 			<key>defaults</key>
 			<string>com.minis.rainbowkeyboard</string>
-			<key>key</key>
-			<string>Speed</string>
 			<key>PostNotification</key>
 			<string>com.minis.rainbowkeyboard.changed</string>
-			<key>label</key>
-			<string>动画速度</string>
 			<key>min</key>
-			<real>0.05</real>
+			<real>0.0</real>
 			<key>max</key>
 			<real>1.0</real>
 			<key>showValue</key>
 			<true/>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSliderCell</string>
-			<key>default</key>
-			<real>0.85</real>
-			<key>defaults</key>
-			<string>com.minis.rainbowkeyboard</string>
-			<key>key</key>
-			<string>Brightness</string>
-			<key>PostNotification</key>
-			<string>com.minis.rainbowkeyboard.changed</string>
-			<key>label</key>
-			<string>光效亮度</string>
-			<key>min</key>
-			<real>0.1</real>
-			<key>max</key>
-			<real>1.0</real>
-			<key>showValue</key>
-			<true/>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSliderCell</string>
-			<key>default</key>
-			<real>0.72</real>
-			<key>defaults</key>
-			<string>com.minis.rainbowkeyboard</string>
-			<key>key</key>
-			<string>Opacity</string>
-			<key>PostNotification</key>
-			<string>com.minis.rainbowkeyboard.changed</string>
-			<key>label</key>
-			<string>光效透明度</string>
-			<key>min</key>
-			<real>0.1</real>
-			<key>max</key>
-			<real>1.0</real>
-			<key>showValue</key>
-			<true/>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>default</key>
-			<true/>
-			<key>defaults</key>
-			<string>com.minis.rainbowkeyboard</string>
-			<key>key</key>
-			<string>RippleEnabled</string>
-			<key>PostNotification</key>
-			<string>com.minis.rainbowkeyboard.changed</string>
-			<key>label</key>
-			<string>按键扩散波纹</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>default</key>
-			<true/>
-			<key>defaults</key>
-			<string>com.minis.rainbowkeyboard</string>
-			<key>key</key>
-			<string>NativeKeyboard</string>
-			<key>PostNotification</key>
-			<string>com.minis.rainbowkeyboard.changed</string>
-			<key>label</key>
-			<string>原生键盘</string>
-		</dict>
-		<dict>
-			<key>cell</key>
-			<string>PSSwitchCell</string>
-			<key>default</key>
-			<true/>
-			<key>defaults</key>
-			<string>com.minis.rainbowkeyboard</string>
-			<key>key</key>
-			<string>WeChatKeyboard</string>
-			<key>PostNotification</key>
-			<string>com.minis.rainbowkeyboard.changed</string>
-			<key>label</key>
-			<string>微信输入法</string>
 		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>进程范围</string>
 			<key>footerText</key>
-			<string>修改后建议强制退出正在使用的键盘宿主应用，或切换一次键盘。</string>
+			<string>微信输入法依据进程标识包含 wetype 判定；其他已注入进程由原生键盘开关控制。不是逐键盘精确识别。</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>key</key>
+			<string>NativeKeyboard</string>
+			<key>label</key>
+			<string>原生及其他已注入进程</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>key</key>
+			<string>WeChatKeyboard</string>
+			<key>label</key>
+			<string>微信输入法进程</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.minis.rainbowkeyboard</string>
+			<key>PostNotification</key>
+			<string>com.minis.rainbowkeyboard.changed</string>
 		</dict>
 	</array>
 </dict>
