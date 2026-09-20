@@ -106,7 +106,7 @@ static void RKPrefsChanged(CFNotificationCenterRef center, void *observer, CFStr
 
     CAMediaTimingFunction *ease = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
     CABasicAnimation *grow = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    grow.fromValue = @(.55); grow.toValue = @(glowSize / keySize); grow.duration = .34; grow.timingFunction = ease;
+    grow.fromValue = @(.55); grow.toValue = @(glowSize / diameter); grow.duration = .34; grow.timingFunction = ease;
     [light addAnimation:grow forKey:@"localGlowGrow"];
     CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
     fade.fromValue = @(.95); fade.toValue = @0; fade.duration = .42; fade.timingFunction = ease;
