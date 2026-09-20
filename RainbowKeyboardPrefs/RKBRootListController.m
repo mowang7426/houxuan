@@ -1,6 +1,7 @@
 #import <UIKit/UIKit.h>
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
+#import "../RKCandidateTransport.h"
 static NSString * const RKPath = @"/var/mobile/Library/Preferences/com.minis.rainbowkeyboard.plist";
 static NSDictionary *RKReadPreferences(void) {
     NSDictionary *values = [NSDictionary dictionaryWithContentsOfFile:RKPath];
@@ -10,6 +11,7 @@ static NSDictionary *RKReadPreferences(void) {
     return CFBridgingRelease(stored) ?: @{};
 }
 static BOOL RKSyncPreferences(NSDictionary *values) {
+    BOOL transportPublished = RKPublishColorState(values);
     CFStringRef domain = CFSTR("com.minis.rainbowkeyboard");
     for (NSString *key in values) {
         id value = values[key];
@@ -24,7 +26,7 @@ static BOOL RKSyncPreferences(NSDictionary *values) {
         id value = CFBridgingRelease(CFPreferencesCopyAppValue((__bridge CFStringRef)key, domain));
         readback[key] = value ?: @"unset";
     }
-    NSDictionary *report = @{@"version":@4, @"syncReturned":@(synced),
+    NSDictionary *report = @{@"version":@5, @"transportPublished":@(transportPublished), @"syncReturned":@(synced),
         @"writtenMarker":marker, @"appReadback":readback,
         @"date":[NSDate date]};
     NSString *path = @"/var/mobile/Library/Preferences/RainbowKeyboard-settings-probe.plist";
