@@ -1,14 +1,82 @@
-{
-    items = (
-        { cell = PSGroupCell; label = "三星风格彩虹键盘光效"; },
-        { cell = PSSwitchCell; default = 1; key = Enabled; label = "启用光效"; },
-        { cell = PSLinkListCell; default = 0; key = Mode; label = "光效模式"; validTitles = ("动态彩虹流光", "静态彩虹", "呼吸光效"); validValues = (0,1,2); },
-        { cell = PSSliderCell; default = 0.45; key = Speed; label = "动画速度"; min = 0.05; max = 1.0; showValue = 1; },
-        { cell = PSSliderCell; default = 0.85; key = Brightness; label = "光效亮度"; min = 0.1; max = 1.0; showValue = 1; },
-        { cell = PSSliderCell; default = 0.72; key = Opacity; label = "光效透明度"; min = 0.1; max = 1.0; showValue = 1; },
-        { cell = PSSwitchCell; default = 1; key = RippleEnabled; label = "按键扩散波纹"; },
-        { cell = PSSwitchCell; default = 1; key = NativeKeyboard; label = "原生键盘"; },
-        { cell = PSSwitchCell; default = 1; key = WeChatKeyboard; label = "微信输入法"; },
-        { cell = PSGroupCell; label = "重启键盘应用后生效部分设置"; }
-    );
-}
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>items</key>
+    <array>
+        <dict>
+            <key>cell</key><string>PSGroupCell</string>
+            <key>label</key><string>三星风格彩虹键盘光效</string>
+        </dict>
+        <dict>
+            <key>cell</key><string>PSSwitchCell</string>
+            <key>default</key><true/>
+            <key>key</key><string>Enabled</string>
+            <key>label</key><string>启用光效</string>
+        </dict>
+        <dict>
+            <key>cell</key><string>PSListItemsCell</string>
+            <key>default</key><integer>0</integer>
+            <key>key</key><string>Mode</string>
+            <key>label</key><string>光效模式</string>
+            <key>validTitles</key>
+            <array>
+                <string>动态彩虹流光</string>
+                <string>静态彩虹</string>
+                <string>呼吸光效</string>
+            </array>
+            <key>validValues</key>
+            <array><integer>0</integer><integer>1</integer><integer>2</integer></array>
+        </dict>
+        <dict>
+            <key>cell</key><string>PSSliderCell</string>
+            <key>default</key><real>0.45</real>
+            <key>key</key><string>Speed</string>
+            <key>label</key><string>动画速度</string>
+            <key>min</key><real>0.05</real>
+            <key>max</key><real>1.0</real>
+            <key>showValue</key><true/>
+        </dict>
+        <dict>
+            <key>cell</key><string>PSSliderCell</string>
+            <key>default</key><real>0.85</real>
+            <key>key</key><string>Brightness</string>
+            <key>label</key><string>光效亮度</string>
+            <key>min</key><real>0.1</real>
+            <key>max</key><real>1.0</real>
+            <key>showValue</key><true/>
+        </dict>
+        <dict>
+            <key>cell</key><string>PSSliderCell</string>
+            <key>default</key><real>0.72</real>
+            <key>key</key><string>Opacity</string>
+            <key>label</key><string>光效透明度</string>
+            <key>min</key><real>0.1</real>
+            <key>max</key><real>1.0</real>
+            <key>showValue</key><true/>
+        </dict>
+        <dict>
+            <key>cell</key><string>PSSwitchCell</string>
+            <key>default</key><true/>
+            <key>key</key><string>RippleEnabled</string>
+            <key>label</key><string>按键扩散波纹</string>
+        </dict>
+        <dict>
+            <key>cell</key><string>PSSwitchCell</string>
+            <key>default</key><true/>
+            <key>key</key><string>NativeKeyboard</string>
+            <key>label</key><string>原生键盘</string>
+        </dict>
+        <dict>
+            <key>cell</key><string>PSSwitchCell</string>
+            <key>default</key><true/>
+            <key>key</key><string>WeChatKeyboard</string>
+            <key>label</key><string>微信输入法</string>
+        </dict>
+        <dict>
+            <key>cell</key><string>PSGroupCell</string>
+            <key>footerText</key><string>修改后建议强制退出正在使用的键盘宿主应用，或切换一次键盘。</string>
+        </dict>
+    </array>
+</dict>
+</plist>

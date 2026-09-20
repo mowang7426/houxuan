@@ -5,11 +5,13 @@
     <key>entry</key>
     <dict>
         <key>bundle</key>
-        <string>com.minis.rainbowkeyboard.prefs</string>
+        <string>RainbowKeyboardPrefs</string>
         <key>cell</key>
         <string>PSLinkCell</string>
         <key>detail</key>
         <string>RKBRootListController</string>
+        <key>isController</key>
+        <true/>
         <key>label</key>
         <string>彩虹键盘光效</string>
     </dict>
