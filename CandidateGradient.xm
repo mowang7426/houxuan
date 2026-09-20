@@ -15,7 +15,12 @@ static NSDictionary *RKCandidateReadPreferences(void) {
             RKCandidateDomain));
         if (value) shared[key] = value;
     }
-    return shared;
+    if (shared.count) return shared;
+    // Temporary rendering probe: never force-enable other host applications.
+    if (![(NSBundle.mainBundle.bundleIdentifier ?: @"").lowercaseString containsString:@"wetype"]) return @{};
+    return @{ @"CandidateGradient": @YES,
+              @"CandidateStart": @[@0.0, @0.65, @1.0],
+              @"CandidateEnd": @[@0.85, @0.15, @1.0] };
 }
 
 static BOOL RKCandidateRegion(UIView *view) {
